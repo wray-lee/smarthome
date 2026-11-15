@@ -1,0 +1,6 @@
+[package]
+name = "tuya-backend"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Tuya backend: QR login, Cloud Control and Telemetry. Placeholder; ticket 04 fills it."
