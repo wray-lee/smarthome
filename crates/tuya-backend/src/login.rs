@@ -84,7 +84,7 @@ pub fn start_login(cfg: &Config, user_code: &str) -> Result<Pending, Failure> {
         });
     }
     let url = format!("{}/v1.0/m/life/home-assistant/qrcode/tokens", cfg.login_url);
-    let response = session::http_client()
+    let response = session::http_client(&cfg.login_url)
         .post(&url)
         .query(&[
             ("clientid", CLIENT_ID),
@@ -92,7 +92,7 @@ pub fn start_login(cfg: &Config, user_code: &str) -> Result<Pending, Failure> {
             ("schema", SCHEMA),
         ])
         .send()
-        .map_err(|e| Failure::upstream(e.to_string()))?;
+        .map_err(|e| Failure::upstream(session::describe_error(e)))?;
     let envelope = read_envelope(response)?;
     let token = envelope
         .pointer("/result/qrcode")
@@ -127,11 +127,11 @@ pub fn poll_login(cfg: &Config, token: &str, user_code: &str) -> Result<Option<S
         "{}/v1.0/m/life/home-assistant/qrcode/tokens/{token}",
         cfg.login_url
     );
-    let response = session::http_client()
+    let response = session::http_client(&cfg.login_url)
         .get(&url)
         .query(&[("clientid", CLIENT_ID), ("usercode", user_code.as_str())])
         .send()
-        .map_err(|e| Failure::upstream(e.to_string()))?;
+        .map_err(|e| Failure::upstream(session::describe_error(e)))?;
     let envelope = read_envelope(response)?;
     if envelope.get("success").and_then(Value::as_bool) != Some(true) {
         // Not scanned yet (or the code expired); the caller decides whether
@@ -218,7 +218,7 @@ fn read_envelope(response: reqwest::blocking::Response) -> Result<Value, Failure
     }
     response
         .json::<Value>()
-        .map_err(|e| Failure::upstream(e.to_string()))
+        .map_err(|e| Failure::upstream(session::describe_error(e)))
 }
 
 #[cfg(test)]

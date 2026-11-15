@@ -14,6 +14,8 @@
 use std::sync::Mutex;
 
 use home_store::{ErrorBody, Exit, Store};
+use reqwest::redirect;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -132,6 +134,32 @@ pub fn storage(e: home_store::StoreError) -> (ErrorBody, Exit) {
     Failure::storage(e).into()
 }
 
+/// A reqwest error as text a user may see.
+///
+/// Two things are needed beyond `Display`: the URL is stripped (reqwest
+/// appends the full URL to `send` errors, and the refresh path puts the
+/// refresh token in the URL's path), and the causes below the top-level
+/// error are appended, because `Display` alone would drop the connect reason
+/// and the redirect policy's own message.
+pub(crate) fn describe_error(e: reqwest::Error) -> String {
+    use std::error::Error as _;
+    let causes: Vec<String> = {
+        let mut causes = Vec::new();
+        let mut source = e.source();
+        while let Some(cause) = source {
+            causes.push(cause.to_string());
+            source = cause.source();
+        }
+        causes
+    };
+    let mut text = e.without_url().to_string();
+    for cause in causes {
+        text.push_str(": ");
+        text.push_str(&cause);
+    }
+    text
+}
+
 /// One serialised Tuya client.
 ///
 /// The `Mutex` is the whole point: login polling, refresh, homes and devices
@@ -159,7 +187,7 @@ impl<'a> TuyaClient<'a> {
             .map_err(|e| Failure::upstream(e.to_string()))?;
         Ok(TuyaClient {
             inner: Mutex::new(session),
-            http: http_client(),
+            http: http_client(&endpoint),
             endpoint,
             store,
         })
@@ -282,12 +310,16 @@ impl<'a> TuyaClient<'a> {
             req = req.json(&serde_json::json!({ "encdata": body_enc }));
         }
 
-        let resp = req.send().map_err(|e| Failure::upstream(e.to_string()))?;
+        let resp = req
+            .send()
+            .map_err(|e| Failure::upstream(describe_error(e)))?;
         let status = resp.status();
         if !status.is_success() {
             return Err(Failure::upstream(format!("Tuya answered HTTP {status}")));
         }
-        let envelope: Value = resp.json().map_err(|e| Failure::upstream(e.to_string()))?;
+        let envelope: Value = resp
+            .json()
+            .map_err(|e| Failure::upstream(describe_error(e)))?;
         let envelope = classify(envelope)?;
         let answered_at = envelope.get("t").and_then(Value::as_i64);
         let result = match envelope.get("result") {
@@ -429,11 +461,53 @@ pub enum Method {
 }
 
 /// The blocking HTTP client, with the one timeout the SDK uses.
-pub fn http_client() -> reqwest::blocking::Client {
-    reqwest::blocking::Client::builder()
-        .timeout(crate::config::TIMEOUT)
+///
+/// HTTPS is required unless `base` is a loopback HTTP fake (the test
+/// upstream, which `config::is_local_http` gates exactly like the endpoint
+/// check does), so a real endpoint can never be reached over cleartext. A
+/// redirect is followed only within the origin of the first request: a
+/// 30x to another host would re-send the `X-token` header, and on the refresh
+/// path the URL itself carries the refresh token.
+pub fn http_client(base: &str) -> reqwest::blocking::Client {
+    client_builder(base)
         .build()
         .unwrap_or_else(|_| reqwest::blocking::Client::new())
+}
+
+/// The builder behind [`http_client`], separate so a test can inspect the
+/// policy without a live request.
+fn client_builder(base: &str) -> reqwest::blocking::ClientBuilder {
+    reqwest::blocking::Client::builder()
+        .timeout(crate::config::TIMEOUT)
+        .https_only(!crate::config::is_local_http(base))
+        .redirect(same_host_redirects())
+}
+
+/// The same ceiling reqwest's default policy uses.
+const MAX_REDIRECTS: usize = 10;
+
+/// Redirects stay on the origin of the first request. A redirect anywhere
+/// else is an error, and the client sends nothing to the other host.
+fn same_host_redirects() -> redirect::Policy {
+    redirect::Policy::custom(|attempt| {
+        let next = attempt.url().clone();
+        let initial = attempt.previous().first().cloned();
+        let hops = attempt.previous().len();
+        if hops > MAX_REDIRECTS {
+            return attempt.error("refusing more than 10 redirects");
+        }
+        match initial {
+            Some(initial) if same_origin(&initial, &next) => attempt.follow(),
+            Some(_) => attempt.error("refusing to follow a redirect to another host"),
+            None => attempt.error("refusing a redirect without a previous URL"),
+        }
+    })
+}
+
+fn same_origin(a: &Url, b: &Url) -> bool {
+    a.scheme() == b.scheme()
+        && a.host_str() == b.host_str()
+        && a.port_or_known_default() == b.port_or_known_default()
 }
 
 #[cfg(test)]
@@ -489,5 +563,128 @@ mod tests {
         assert_eq!(err.exit, Exit::ReauthRequired);
         assert_eq!(err.body.backend, Some(BACKEND));
         assert_eq!(err.body.code, "reauth_required");
+    }
+
+    /// A URL with something secret in its path, sent to a port nothing
+    /// listens on: the error `send` returns must not carry the URL.
+    #[test]
+    fn a_send_error_is_described_without_its_url() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let base = format!("http://127.0.0.1:{port}");
+        let err = http_client(&base)
+            .get(format!("{base}/v1.0/m/token/canary-refresh-token"))
+            .send()
+            .unwrap_err();
+        let text = describe_error(err);
+        assert!(
+            !text.contains("canary-refresh-token"),
+            "the URL's path leaked: {text}"
+        );
+        assert!(!text.contains(&base), "the URL's host leaked: {text}");
+        assert!(
+            text.contains("error sending request"),
+            "the cause must still be described: {text}"
+        );
+    }
+
+    #[test]
+    fn a_decode_error_is_described_without_its_url() {
+        // A server that answers with something that is not JSON.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let _ = std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { continue };
+                let mut buf = [0u8; 4096];
+                let _ = std::io::Read::read(&mut stream, &mut buf);
+                let _ = std::io::Write::write_all(
+                    &mut stream,
+                    b"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 4\r\n\r\nnope",
+                );
+            }
+        });
+        let base = format!("http://127.0.0.1:{port}");
+        let err = http_client(&base)
+            .get(format!("{base}/v1.0/m/token/canary-refresh-token"))
+            .send()
+            .unwrap()
+            .json::<Value>()
+            .unwrap_err();
+        let text = describe_error(err);
+        assert!(!text.contains("canary-refresh-token"), "{text}");
+        assert!(!text.contains(&base), "{text}");
+        assert!(
+            text.contains("error decoding response body"),
+            "the kind must still be described: {text}"
+        );
+    }
+
+    /// `https_only` applies to a real endpoint and is dropped only for the
+    /// loopback HTTP fake the tests use; the check is the same one the
+    /// endpoint gate applies.
+    #[test]
+    fn https_is_required_except_for_the_loopback_fake() {
+        assert!(
+            crate::config::is_local_http("http://127.0.0.1:9"),
+            "a loopback fake is the only cleartext base"
+        );
+        assert!(!crate::config::is_local_http("https://apigw.tuyaus.com"));
+        // A real endpoint: an http URL is refused before any connection.
+        let err = http_client("https://apigw.tuyaus.com")
+            .get("http://apigw.tuyaus.com/v1.0/m/token/canary-refresh-token")
+            .send()
+            .unwrap_err();
+        let text = describe_error(err);
+        assert!(
+            text.contains("URL scheme is not allowed"),
+            "cleartext to a real endpoint must be refused: {text}"
+        );
+        assert!(!text.contains("canary-refresh-token"), "{text}");
+
+        // The loopback fake is allowed over http.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let _ = std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(mut stream) = stream else { continue };
+                let mut buf = [0u8; 4096];
+                let _ = std::io::Read::read(&mut stream, &mut buf);
+                let _ = std::io::Write::write_all(
+                    &mut stream,
+                    b"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 10\r\n\r\n{\"a\": \"b\"}",
+                );
+            }
+        });
+        let base = format!("http://127.0.0.1:{port}");
+        let value: Value = http_client(&base)
+            .get(&base)
+            .send()
+            .unwrap()
+            .json()
+            .unwrap();
+        assert_eq!(value, serde_json::json!({"a": "b"}));
+    }
+
+    #[test]
+    fn same_origin_compares_scheme_host_and_port() {
+        let parse = |s: &str| Url::parse(s).unwrap();
+        assert!(same_origin(
+            &parse("https://apigw.tuyaus.com/a"),
+            &parse("https://apigw.tuyaus.com/b/c")
+        ));
+        assert!(!same_origin(
+            &parse("https://apigw.tuyaus.com/a"),
+            &parse("http://apigw.tuyaus.com/a")
+        ));
+        assert!(!same_origin(
+            &parse("https://apigw.tuyaus.com/a"),
+            &parse("https://evil.example/a")
+        ));
+        assert!(!same_origin(
+            &parse("http://127.0.0.1:1/a"),
+            &parse("http://127.0.0.1:2/a")
+        ));
     }
 }

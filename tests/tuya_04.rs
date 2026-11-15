@@ -15,6 +15,20 @@ use std::process::Command;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
 
+/// A `MockServer` that answers every request with a redirect, so a test can
+/// point one at another server and prove where the hop did or did not land.
+async fn redirecting_to(location: &str) -> MockServer {
+    let server = MockServer::start().await;
+    let place = location.to_string();
+    Mock::given(wiremock::matchers::any())
+        .respond_with(move |_req: &Request| {
+            ResponseTemplate::new(307).insert_header("location", place.clone())
+        })
+        .mount(&server)
+        .await;
+    server
+}
+
 // ---------------------------------------------------------------------------
 // Harness
 // ---------------------------------------------------------------------------
@@ -850,8 +864,168 @@ async fn a_sealed_device_list_opens_and_lists_the_same_devices() {
 }
 
 // ---------------------------------------------------------------------------
-// Refresh-token rotation: written to SQLite before the new token is used
+// A failed refresh must not print the refresh token
 // ---------------------------------------------------------------------------
+
+/// The refresh path puts the refresh token in the URL's path, and reqwest
+/// appends the URL to a `send` error. A session that has to refresh against a
+/// closed loopback port must fail as `upstream` with no token in sight.
+#[tokio::test]
+async fn a_failed_refresh_reports_upstream_without_the_refresh_token_or_token_path() {
+    let (_dir, db) = temp_db();
+    expired_session(&db);
+
+    // A port nothing listens on: bind, note it, drop it, so a connect fails
+    // at once instead of hanging.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = listener.local_addr().unwrap().port();
+    drop(listener);
+    let dead = format!("http://127.0.0.1:{port}");
+
+    let login_server = MockServer::start().await;
+    let mut cmd = home(&db);
+    cmd.env("HOME_TUYA_LOGIN_URL", login_server.uri());
+    cmd.env("HOME_TUYA_ENDPOINT", &dead);
+    cmd.env("HOME_TUYA_POLL_MS", "0");
+    cmd.args(["tuya", "devices"]);
+    let (code, json, stdout, stderr) = run_full(&mut cmd);
+    assert_eq!(code, 7, "{json}; stderr: {stderr}");
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "upstream");
+    assert_eq!(json["error"]["backend"], "tuya");
+    let message = json["error"]["message"].as_str().unwrap();
+    // The error still says what happened, with the connect cause appended.
+    assert!(
+        message.contains("error sending request"),
+        "the failure must be described: {message}"
+    );
+    assert!(
+        message.contains("Connection refused"),
+        "the cause must be described: {message}"
+    );
+    // No URL at all, so no path, which carries the refresh token.
+    assert!(
+        !message.contains("/v1.0/m/token/"),
+        "the token path leaked: {message}"
+    );
+    assert!(!stdout.contains("dummy-refresh-old"), "{stdout}");
+    assert!(!stdout.contains("/v1.0/m/token/"), "{stdout}");
+    // The session was not rewritten: the old pair is still what is stored.
+    assert_eq!(stored_refresh_token(&db), "dummy-refresh-old");
+    assert_eq!(credential(&db)["access_token"], "dummy-access-old");
+}
+
+// ---------------------------------------------------------------------------
+// Redirects: same origin is followed, another origin is refused
+// ---------------------------------------------------------------------------
+
+/// The fake upstream is reached over loopback HTTP, which the client allows
+/// only for that base; a 307 to the same origin is followed, so the login
+/// flow keeps working through one.
+#[tokio::test]
+async fn a_redirect_within_the_same_origin_is_followed() {
+    let (_dir, db) = temp_db();
+    expired_session(&db);
+
+    // The token refresh lands on `/moved`, a same-origin 307 to the real
+    // token answer; only a followed redirect reaches `dummy-access-new`.
+    let api = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1.0/m/token/dummy-refresh-old"))
+        .respond_with(
+            ResponseTemplate::new(307)
+                .insert_header("location", format!("{}/v1.0/m/token/moved", api.uri())),
+        )
+        .mount(&api)
+        .await;
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    Mock::given(method("GET"))
+        .and(path("/v1.0/m/token/moved"))
+        .respond_with(envelope(serde_json::json!({
+            "t": now_ms,
+            "success": true,
+            "result": {
+                "accessToken": "dummy-access-new",
+                "refreshToken": "dummy-refresh-new",
+                "expireTime": 7200,
+                "uid": "dummy-uid-1",
+            },
+        })))
+        .mount(&api)
+        .await;
+    let homes: serde_json::Value = serde_json::from_str(HOMES).unwrap();
+    let devices: serde_json::Value = serde_json::from_str(HOME_DEVICES).unwrap();
+    Mock::given(method("GET"))
+        .and(path("/v1.0/m/life/users/homes"))
+        .respond_with(envelope(homes))
+        .mount(&api)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/v1.0/m/life/ha/home/devices"))
+        .respond_with(envelope(devices))
+        .mount(&api)
+        .await;
+
+    let login_server = MockServer::start().await;
+    let mut cmd = home(&db);
+    point_at_tuya(&mut cmd, &login_server, &api);
+    cmd.args(["tuya", "devices"]);
+    let (code, json) = run(&mut cmd);
+    assert_eq!(code, 0, "{json}");
+    let requests = api.received_requests().await.unwrap();
+    assert!(
+        requests
+            .iter()
+            .any(|r| r.url.path() == "/v1.0/m/token/moved"),
+        "the redirect was not followed"
+    );
+    assert_eq!(stored_refresh_token(&db), "dummy-refresh-new");
+}
+
+/// A 307 to another host would re-send the `X-token` header and, on the
+/// refresh path, hand the token-bearing URL to a stranger. The hop is
+/// refused and the second server sees nothing at all.
+#[tokio::test]
+async fn a_redirect_to_another_host_is_refused_and_the_other_host_is_not_contacted() {
+    let (_dir, db) = temp_db();
+    expired_session(&db);
+
+    let elsewhere = MockServer::start().await;
+    let first = redirecting_to(&format!("{}/v1.0/m/token/stolen", elsewhere.uri())).await;
+
+    let login_server = MockServer::start().await;
+    let mut cmd = home(&db);
+    cmd.env("HOME_TUYA_LOGIN_URL", login_server.uri());
+    cmd.env("HOME_TUYA_ENDPOINT", first.uri());
+    cmd.args(["tuya", "devices"]);
+    let (code, json, stdout, _) = run_full(&mut cmd);
+    assert_eq!(code, 7, "{json}");
+    assert_eq!(json["error"]["code"], "upstream");
+    let message = json["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("another host"),
+        "the refusal must say why: {message}"
+    );
+    assert!(
+        !message.contains("/v1.0/m/token/"),
+        "the token path leaked: {message}"
+    );
+    assert!(!stdout.contains("dummy-refresh-old"), "{stdout}");
+    assert!(
+        elsewhere.received_requests().await.unwrap().is_empty(),
+        "the second host must never be contacted"
+    );
+    assert_eq!(
+        first.received_requests().await.unwrap().len(),
+        1,
+        "the first host was hit once"
+    );
+    // Nothing rotated: the session still has its old tokens.
+    assert_eq!(stored_refresh_token(&db), "dummy-refresh-old");
+}
 
 /// A database with a Tuya session whose access token has already expired, so
 /// the next command refreshes instead of logging in.

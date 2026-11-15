@@ -47,7 +47,7 @@ fn hmac_sha256(key: &[u8], msg: &[u8]) -> Vec<u8> {
 /// are still sent but are left out of `to_sign`.
 pub const SIGNED_HEADERS: [&str; 5] = ["X-appKey", "X-requestId", "X-sid", "X-time", "X-token"];
 
-/// The 31-character alphabet the SDK draws its nonce from. A 12-character
+/// The 48-character alphabet the SDK draws its nonce from. A 12-character
 /// nonce is drawn from it, so `ABCDEFGHJKMN` is a legal one.
 const NONCE_CHARS: &[u8] = b"ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678";
 
