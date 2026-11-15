@@ -326,6 +326,17 @@ fn login(db: &Path, foyer: &MockServer, auth: &MockServer) {
     );
 }
 
+/// Every path the fake foyer saw, in arrival order.
+async fn request_paths(foyer: &MockServer) -> Vec<String> {
+    foyer
+        .received_requests()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|r| r.url.path().to_owned())
+        .collect()
+}
+
 /// Every request the fake foyer saw on `path`, decoded when it is JSON.
 async fn requests_to(foyer: &MockServer, path: &str) -> Vec<Value> {
     foyer
@@ -613,6 +624,20 @@ async fn unlock_and_disarm_without_confirm_are_exit_6_and_never_sent() {
         assert_eq!(json["error"]["code"], "sensitive_action");
         assert_eq!(json["error"]["backend"], "google_home");
     }
+    // The whole foyer log, in arrival order: one GetHomeGraph per set, nothing
+    // else. The equality pins the order — if the guard ever moved after the
+    // offline check, the online Lock/Alarm would be answered by a GetTraits
+    // and the log would grow; if it moved after the write, UpdateTraits would
+    // appear. Trait RPCs are also counted on their own.
+    assert_eq!(
+        request_paths(&foyer).await,
+        vec![GRAPH_PATH.to_string(), GRAPH_PATH.to_string()],
+        "each refused set resolves the name once and sends no trait RPC"
+    );
+    assert!(
+        requests_to(&foyer, GET_PATH).await.is_empty(),
+        "zero GetTraits"
+    );
     assert!(
         requests_to(&foyer, UPDATE_PATH).await.is_empty(),
         "a Sensitive Action without --confirm must send nothing"
@@ -667,6 +692,21 @@ async fn a_protected_device_is_refused_even_with_confirm_but_still_readable() {
     assert_eq!(code, 6, "{stdout}");
     assert_eq!(json["error"]["code"], "protected");
     assert_eq!(json["error"]["backend"], "google_home");
+    // The whole foyer log, in arrival order: the GetHomeGraph name resolution
+    // and nothing else (login never touches the foyer). The equality pins the
+    // order — if the guard ever moved after the offline check, the online
+    // Device would be answered by a GetTraits and the log would grow; if it
+    // moved after the write, UpdateTraits would appear. Trait RPCs are also
+    // counted on their own.
+    assert_eq!(
+        request_paths(&foyer).await,
+        vec![GRAPH_PATH.to_string()],
+        "the protected refusal happens right after the name resolution"
+    );
+    assert!(
+        requests_to(&foyer, GET_PATH).await.is_empty(),
+        "zero GetTraits"
+    );
     assert!(
         requests_to(&foyer, UPDATE_PATH).await.is_empty(),
         "a protected Device must never receive UpdateTraits"
