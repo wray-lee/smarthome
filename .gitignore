@@ -1,0 +1,12 @@
+tmp/
+target/
+*.sqlite
+*.db
+# Local records and agent harness config: they name real device IDs, and the
+# repo must carry no real IDs.
+.scratch/
+.claude/
+__pycache__/
+# A stray downloaded page, not project content.
+ug.html
+wget-log

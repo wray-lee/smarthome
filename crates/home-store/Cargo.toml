@@ -1,0 +1,13 @@
+[package]
+name = "home-store"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Shared SQLite storage, JSON output and exit-code contract."
+
+[dependencies]
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
