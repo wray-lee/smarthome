@@ -14,7 +14,7 @@ stderr and still leaves the sign-in done (exit 0). All offline criteria pass
 — `cargo test --test tuya_04` 17/17, `cargo test -p tuya-backend` 23/23,
 full workspace gates green. The one
 manual step still open is the real Smart Life QR scan against the real
-account (see `.scratch/smarthome-v1/build-notes-0304.md`, `## live steps`).
+account (see `.scratch/smarthome-v1/build-notes-0304.md`, `## Live steps (tickets 03/04, human-in-the-loop)`).
 No write command exists in this ticket; never send any write to LAB.
 
 - [x] The Tuya Backend crate is ported from `lueur`'s MIT `tuya_cloud.rs`, with attribution, and does not depend on the Google Home Backend crate

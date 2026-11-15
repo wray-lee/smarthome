@@ -3,8 +3,8 @@
 //! Ported from Alegzandr/lueur `crates/lueur-shell/src/tuya_cloud.rs`,
 //! commit be7ba9b14be8fc1031ee962c9069c744e88e8252, MIT;
 //! Copyright (c) 2026 Lueur contributors. The full MIT text is in
-//! `LICENSE-tuya` in this crate; see also the README section the final
-//! integration ticket writes.
+//! `LICENSE-tuya` in this crate; the README's Tuya section documents the
+//! commands.
 //!
 //! What the Backend does in this ticket:
 //!

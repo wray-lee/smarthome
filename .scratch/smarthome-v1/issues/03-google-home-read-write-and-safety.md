@@ -22,5 +22,5 @@ Offline work is done (2026-11-16, commits in
 `.scratch/smarthome-v1/build-notes-0304.md` `## final integration`);
 `cargo test --test gh_03` 17/17, `cargo test -p ghome-backend` 46/46, full
 workspace gates green. The two unchecked items need the real account and are
-listed in `.scratch/smarthome-v1/build-notes-0304.md` (`## live steps`).
+listed in `.scratch/smarthome-v1/build-notes-0304.md` (`## Live steps (tickets 03/04, human-in-the-loop)`).
 Real IDs come from `validation.md`, never from this file.

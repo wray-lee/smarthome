@@ -5,9 +5,8 @@
 //!
 //! No test contains a real Device ID, token or Local Key. The wire shapes are
 //! the redacted ticket-01 fixtures plus synthetic values (`fake-key-a`,
-//! `dummy-access-1`, ...). The CLI wiring (`home tuya login|devices|keys`)
-//! belongs to the final integration ticket; these tests are written against
-//! that interface and must pass as soon as it exists.
+//! `dummy-access-1`, ...). The CLI wiring (`home tuya login|devices|keys`) is
+//! in `src/main.rs`; these tests run the real binary against the fake upstream.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

@@ -7,8 +7,8 @@
 //! `.scratch/smarthome-v1/fixtures/foyer/` or dummies built in that style;
 //! no real account or Device appears here.
 //!
-//! The `gh get` / `gh set` subcommands are wired by the integration ticket;
-//! until then these tests fail at argument parsing, by design.
+//! The `gh get` / `gh set` subcommands are wired in `src/main.rs`; these tests
+//! run the real binary against the fake foyer.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
