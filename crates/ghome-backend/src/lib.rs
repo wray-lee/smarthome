@@ -297,11 +297,18 @@ pub fn get_state(
 ///
 /// - Name resolution and ID precedence are [`get_state`]'s.
 /// - A protected Device (ticket 02) is refused with exit 6 and `protected`
-///   before anything is sent, and `confirm` does not override that.
+///   before any trait RPC is sent, `UpdateTraits` and `GetTraits` included;
+///   `confirm` does not override that. The `GetHomeGraph` name resolution
+///   needs has already gone out; nothing else has.
 /// - A Sensitive Action (`lockUnlock.isLocked` false, `armDisarm.isArmed`
-///   false) without `confirm` is exit 6 with `sensitive_action`.
-/// - A trait the Device does not advertise is exit 2 with `unsupported_trait`.
-/// - An offline Device is exit 4 with `device_offline`.
+///   false) without `confirm` is exit 6 with `sensitive_action`, likewise
+///   before any trait RPC.
+/// - A trait the Device does not advertise is exit 2 with `unsupported_trait`,
+///   also before any trait RPC.
+/// - An offline Device is exit 4 with `device_offline`. Checking that is the
+///   one deliberate read before the write: once the refusals above have
+///   passed, one `GetTraits` is sent for `deviceStatus.online`, and only its
+///   answer decides whether the write goes out.
 /// - Only then is `UpdateTraits` sent. Its answer echoes the resulting
 ///   traits; the returned document is the same shape as [`get_state`]'s plus
 ///   `changed`.

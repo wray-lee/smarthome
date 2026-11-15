@@ -103,9 +103,10 @@ either, the flags supply the other). `home gh get` prints the current traits
 under `traits`; `home gh set` prints the resulting state plus `changed`.
 
 Unlocking a lock or disarming an alarm is a Sensitive Action: without
-`--confirm` it is refused with exit 6 and nothing is sent upstream. A
+`--confirm` it is refused with exit 6 and no trait call is sent upstream. A
 protected Device is refused with exit 6 even with `--confirm`; reading it
-still works.
+still works. A `set` that passes those refusals reads the Device once more
+(one `GetTraits`) to check it is online, and only then writes.
 
 ## Sign in to Tuya and back up Local Keys
 
@@ -149,8 +150,9 @@ Keep it out of the repo and back it up deliberately.
 `home protect google_home:<id>` (or `gh:<id>`, `tuya:<id>`) adds a Device to
 the protected list; `home protect --list` shows it; `home protect --remove`
 is the only way out. Every write path goes through `home_store::guard`, which
-refuses a protected Device with exit 6 before any upstream call. No flag
-bypasses it. Nothing is protected by default.
+refuses a protected Device with exit 6 before any trait RPC (the Google Home
+name lookup has already run). No flag bypasses it. Nothing is protected by
+default.
 
 ## Upstream overrides
 

@@ -208,6 +208,16 @@ impl Fake {
             .map(|(_, b)| b.clone())
             .collect()
     }
+
+    /// Every path the fake saw, in order, including unmatched ones.
+    fn paths(&self) -> Vec<String> {
+        self.calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|(p, _)| p.clone())
+            .collect()
+    }
 }
 
 fn read_request(stream: &mut TcpStream) -> (String, String) {
@@ -356,8 +366,18 @@ fn set_trait_sends_the_partner_ids_and_reports_the_change() {
 }
 
 #[test]
-fn a_protected_device_is_refused_even_with_confirm_and_nothing_is_sent() {
-    let foyer = happy_foyer(&on_off_state("dup-2", 1, true), "[]");
+fn a_protected_device_is_refused_even_with_confirm_and_only_the_graph_is_read() {
+    // The fake serves the graph, GetTraits and UpdateTraits, so an absent
+    // request below can only mean the guard stopped the call, not that a
+    // route was missing. Protecting first is what makes this the guard path:
+    // resolution needs the graph, and `set_trait` returns at `guard::require`
+    // right after it. Without that guard the same call would go on to send
+    // the offline-check `GetTraits` and then `UpdateTraits`, so the counts
+    // below distinguish the two behaviours. The Device is reported offline in
+    // the fake's `GetTraits` answer: if the guard ever moved behind the
+    // offline check, this test would see exit 4 `device_offline` and a
+    // non-zero `GetTraits` instead of exit 6.
+    let foyer = happy_foyer(&on_off_state("dup-2", 0, true), "[]");
     let store = Store::open_in_memory().unwrap();
     store.protect(BACKEND, "dup-2").unwrap();
     let mut session = foyer.session(&store);
@@ -372,12 +392,19 @@ fn a_protected_device_is_refused_even_with_confirm_and_nothing_is_sent() {
     assert_eq!(exit.code(), 6);
     assert_eq!(body.code, "protected");
     assert_eq!(body.backend, Some("google_home"));
-    assert_eq!(foyer.hits(UPDATE_PATH), 0, "no write may be sent");
+    // The only upstream call of any kind is the name-resolution graph read:
+    // no trait RPC at all, so no offline check and no write.
+    assert_eq!(
+        foyer.paths(),
+        vec![GRAPH_PATH.to_string()],
+        "only GetHomeGraph may be sent before the guard refuses"
+    );
     assert_eq!(
         foyer.hits(GET_PATH),
         0,
-        "the guard stops before any trait RPC"
+        "the guard stops before any trait RPC (no offline check)"
     );
+    assert_eq!(foyer.hits(UPDATE_PATH), 0, "no write may be sent");
 }
 
 #[test]
@@ -397,6 +424,14 @@ fn unlock_and_disarm_need_confirm_and_send_nothing_without_it() {
     assert_eq!(body.code, "sensitive_action");
     assert_eq!(body.backend, Some("google_home"));
     assert_eq!(foyer.hits(UPDATE_PATH), 0);
+    // The guard passed (the Device is not protected), so the stop is the
+    // Sensitive Action itself: no trait RPC, offline check included, was
+    // sent, and the only upstream call is the name-resolution graph read.
+    assert_eq!(
+        foyer.paths(),
+        vec![GRAPH_PATH.to_string()],
+        "only GetHomeGraph may be sent before the Sensitive Action refusal"
+    );
     assert_eq!(foyer.hits(GET_PATH), 0, "no state read before the refusal");
     assert!(body.message.contains("unlocking"), "{}", body.message);
 }
