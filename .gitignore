@@ -2,11 +2,22 @@ tmp/
 target/
 *.sqlite
 *.db
-# Local records and agent harness config: they name real device IDs, and the
-# repo must carry no real IDs.
-.scratch/
+# Agent harness config and the LAB guard name real device IDs. Never commit it.
 .claude/
 __pycache__/
 # A stray downloaded page, not project content.
 ug.html
 wget-log
+
+# Local records: only the clean part is committed. Tickets, the spec, the
+# research notes and the fake-ID fixtures are safe. validation.md and tools/
+# name the real device IDs (and the real account), so they stay local; the
+# tickets point at validation.md for those IDs instead of spelling them out.
+.scratch/*
+!.scratch/research-google-home.md
+!.scratch/research-tuya.md
+!.scratch/smarthome-v1
+.scratch/smarthome-v1/*
+!.scratch/smarthome-v1/issues
+!.scratch/smarthome-v1/fixtures
+!.scratch/smarthome-v1/spec.md

@@ -1,0 +1,17 @@
+# 06 — Multi-arch Docker image and minimal Web Panel
+
+**What to build:** The user deploys one Docker image on a linux arm64 or amd64 box, opens the Web Panel, enters a password, sees Devices from both Backends labelled by Backend, and turns them on and off. The panel's HTTP endpoints call the same command layer as the CLI and return the same JSON.
+
+**Blocked by:** 03 — Google Home read and write with safety rules; 05 — Tuya control and Telemetry
+
+**Status:** ready-for-agent
+
+- [ ] `home serve` serves the panel and its JSON endpoints from the same binary
+- [ ] Password from a configured secret, then a session cookie. Every endpoint without a session returns 401
+- [ ] The panel lists Devices from both Backends with a Backend label and an on/off control. It is a static page with no front-end build step
+- [ ] Protected Devices show their state with a visible "protected" label (text, not color alone) and no on/off control. Their write endpoints return the same exit-6 JSON error
+- [ ] Sensitive Actions require the same explicit confirmation as the CLI
+- [ ] A multi-stage Dockerfile builds with `docker buildx` for linux/amd64 and linux/arm64. The SQLite file lives on a mounted volume and is never baked into the image
+- [ ] Smoke test: 401 without the password, and with it the device list matches the CLI's JSON
+- [ ] README states that the SQLite file is the key to the whole home and the Google account, and that remote access goes through Tailscale
+- [ ] WSL build caches and temporary files are deleted when the ticket ends; images go to the host `tmp/` only if they must be kept

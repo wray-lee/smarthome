@@ -1,0 +1,20 @@
+# 05 — Tuya control and Telemetry
+
+**What to build:** An agent turns Tuya plugs on and off and reads their Telemetry from any network through Cloud Control. Readings carry both the raw value and the scaled value with units. Transient cloud errors are retried, and dead sessions report `reauth_required`.
+
+**Blocked by:** 04 — Tuya QR login, device list, and Local Key backup
+
+**Status:** ready-for-agent
+
+- [ ] `home tuya on|off <device>` sends the switch command. Device resolution follows the same rules as ticket 03
+- [ ] `home tuya get <device>` prints all data points. Telemetry points appear as `{raw, scale, value, unit}`, with the scale taken from the Device's declared specification and never from hard-coded DP numbers
+- [ ] `home tuya set <device> <code> <value>` writes any raw data point
+- [ ] `1108` is retried up to twice. `sign invalid` and `1010` give exit 5 with `reauth_required` naming the Tuya Backend
+- [ ] Identical commands sent in quick succession are all sent (no silent 10-second drop)
+- [ ] An offline Device gives exit 4
+- [ ] `on`/`off`/`set` on a protected Device (ticket 02) gives exit 6 with a `protected` error and is never sent upstream (asserted on the fake: zero command requests). `get` and Telemetry still work
+- [ ] Calibration data points (`voltage_coe`, `electric_coe`, `power_coe`, `electricity_coe`) are reported separately from Telemetry, not as readings
+- [ ] Live checks against the real account target only the Home plug. Never send any write to LAB
+- [ ] Live guard test on the Home plug (Tuya ID: real ID, see the device table in the local, untracked `.scratch/smarthome-v1/validation.md`), same steps as ticket 03: protect, `home tuya off` gives exit 6, state unchanged on readback, remove protection, normal off/on works, leave it on
+- [ ] Only after both live guard tests (03 and 05) pass: `home protect` LAB on both Backends (Tuya and Google Home IDs: real IDs, see the device table in the local, untracked `.scratch/smarthome-v1/validation.md`), confirm `home protect --list` shows both, and confirm a write attempt on LAB gives exit 6 by checking the guard with the fake upstream, not the real plug
+- [ ] Black-box tests cover every criterion above against the fake Tuya upstream, including a Device whose declared scale disagrees with its raw values

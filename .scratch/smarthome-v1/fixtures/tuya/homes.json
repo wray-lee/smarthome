@@ -1,0 +1,23 @@
+{
+  "t": 1794759258801,
+  "sign": "0a27d4b1028d9fff74d2686122725228",
+  "tid": "9c485310e10f11f18ae9feb5a8aea4f5",
+  "success": true,
+  "result": [
+    {
+      "background": "",
+      "geoName": "",
+      "gmtCreate": 1793296983,
+      "gmtModified": 1793296983,
+      "groupId": "<redacted>",
+      "id": "<redacted>",
+      "lat": "<redacted>",
+      "lon": "<redacted>",
+      "name": "我的家 ..",
+      "ownerId": "<redacted>",
+      "source": 0,
+      "status": true,
+      "uid": "<redacted>"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "inputs": {
+    "rid": "11111111-2222-3333-4444-555555555555",
+    "refresh_token": "test-refresh-token",
+    "sid": "",
+    "x_time": "1700000000000",
+    "access_token": "test-access-token",
+    "client_id": "HA_3y9q4ak7g4ephrvke",
+    "fixed_nonce": "ABCDEFGHJKMN",
+    "query_json": "{\"homeId\":\"123\"}",
+    "body_json": "{\"commands\":[{\"code\":\"switch_1\",\"value\":true}]}"
+  },
+  "hash_key_md5_rid_plus_refresh": "d6a4d4007efb39a087d1255bc92c0cf4",
+  "aes_secret_hmac_sha256_first16hex": "162723c1c5eb7c79",
+  "query_encdata": "QUJDREVGR0hKS01OB8JywI9Duw2H5HuwIurkpC8XQRSEGTzUvDuLrN8iP6Y=",
+  "body_encdata": "QUJDREVGR0hKS01OB8J5wI9LkwfBrXu7S6Lkur4nwwcbO623v6Gu8FMkYwYxBB5gYdY7r+xHEM1V3PkDN49jMK83yAuvbPm05c12",
+  "sign_get_with_query": "cc49ea179c431d917216389308ecb2a18e5edf5780a8645bae690e88a5568e21",
+  "sign_post_with_body": "1bf7254002747778afe3079e23314dbceac99020c756ef0161179076b34aabc5",
+  "sign_no_token_no_payload": "303fa31d4c0a2fe97502e09e89275e7a2c95940528bfa46a528a61b540a7eb69",
+  "decrypt_check": "{\"commands\":[{\"code\":\"switch_1\",\"value\":true}]}"
+}

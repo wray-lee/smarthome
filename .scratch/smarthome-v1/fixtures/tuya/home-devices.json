@@ -1,0 +1,200 @@
+{
+  "t": 1794759259078,
+  "sign": "a53cdddcd66af97b42207782ab2d0fc9",
+  "tid": "9c618755e10f11f1b99eda09dbb93bf7",
+  "success": true,
+  "result": [
+    {
+      "active_time": 1794730204,
+      "biz_type": 0,
+      "category": "cz",
+      "create_time": 1794730204,
+      "icon": "<redacted>",
+      "id": "tuyaFakeLab0000000002",
+      "ip": "<redacted>",
+      "lat": "<redacted>",
+      "local_key": "<redacted>",
+      "lon": "<redacted>",
+      "name": "LAB",
+      "online": true,
+      "owner_id": "<redacted>",
+      "product_id": "<redacted>",
+      "product_name": "smart plug",
+      "status": [
+        {
+          "code": "switch_1",
+          "value": true
+        },
+        {
+          "code": "countdown_1",
+          "value": 0
+        },
+        {
+          "code": "add_ele",
+          "value": 100
+        },
+        {
+          "code": "cur_current",
+          "value": 2384
+        },
+        {
+          "code": "cur_power",
+          "value": 2484
+        },
+        {
+          "code": "cur_voltage",
+          "value": 1043
+        },
+        {
+          "code": "voltage_coe",
+          "value": 560
+        },
+        {
+          "code": "electric_coe",
+          "value": 27432
+        },
+        {
+          "code": "power_coe",
+          "value": 14888
+        },
+        {
+          "code": "electricity_coe",
+          "value": 2800
+        },
+        {
+          "code": "fault",
+          "value": 0
+        },
+        {
+          "code": "relay_status",
+          "value": "power_on"
+        },
+        {
+          "code": "light_mode",
+          "value": "relay"
+        },
+        {
+          "code": "child_lock",
+          "value": false
+        },
+        {
+          "code": "cycle_time",
+          "value": ""
+        },
+        {
+          "code": "random_time",
+          "value": ""
+        },
+        {
+          "code": "switch_inching",
+          "value": ""
+        },
+        {
+          "code": "overcharge_switch",
+          "value": false
+        }
+      ],
+      "sub": false,
+      "time_zone": "+09:00",
+      "uid": "<redacted>",
+      "update_time": 1794730204,
+      "uuid": "<redacted>"
+    },
+    {
+      "active_time": 1794758261,
+      "biz_type": 0,
+      "category": "cz",
+      "create_time": 1794758261,
+      "icon": "<redacted>",
+      "id": "tuyaFakeHome000000001",
+      "ip": "<redacted>",
+      "lat": "<redacted>",
+      "local_key": "<redacted>",
+      "lon": "<redacted>",
+      "name": "Home",
+      "online": true,
+      "owner_id": "<redacted>",
+      "product_id": "<redacted>",
+      "product_name": "smart plug",
+      "status": [
+        {
+          "code": "switch_1",
+          "value": true
+        },
+        {
+          "code": "countdown_1",
+          "value": 0
+        },
+        {
+          "code": "add_ele",
+          "value": 2
+        },
+        {
+          "code": "cur_current",
+          "value": 0
+        },
+        {
+          "code": "cur_power",
+          "value": 0
+        },
+        {
+          "code": "cur_voltage",
+          "value": 1035
+        },
+        {
+          "code": "voltage_coe",
+          "value": 560
+        },
+        {
+          "code": "electric_coe",
+          "value": 27243
+        },
+        {
+          "code": "power_coe",
+          "value": 14822
+        },
+        {
+          "code": "electricity_coe",
+          "value": 2810
+        },
+        {
+          "code": "fault",
+          "value": 0
+        },
+        {
+          "code": "relay_status",
+          "value": "last"
+        },
+        {
+          "code": "light_mode",
+          "value": "relay"
+        },
+        {
+          "code": "child_lock",
+          "value": false
+        },
+        {
+          "code": "cycle_time",
+          "value": ""
+        },
+        {
+          "code": "random_time",
+          "value": ""
+        },
+        {
+          "code": "switch_inching",
+          "value": ""
+        },
+        {
+          "code": "overcharge_switch",
+          "value": false
+        }
+      ],
+      "sub": false,
+      "time_zone": "+09:00",
+      "uid": "<redacted>",
+      "update_time": 1794758261,
+      "uuid": "<redacted>"
+    }
+  ]
+}

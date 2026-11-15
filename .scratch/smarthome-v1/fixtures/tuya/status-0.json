@@ -1,0 +1,235 @@
+{
+  "t": 1794759259416,
+  "sign": "f1cc4e7ddc816a31c78f3bf6b5a93067",
+  "tid": "9ca686e5e10f11f1a9a96e874328d280",
+  "success": true,
+  "result": {
+    "category": "cz",
+    "dpStatusRelationDTOS": [
+      {
+        "dpCode": "switch_1",
+        "dpId": 1,
+        "enumMappingMap": {},
+        "statusCode": "switch_1",
+        "statusFormat": "{\"switch_1\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{}",
+        "valueType": "Boolean"
+      },
+      {
+        "dpCode": "countdown_1",
+        "dpId": 9,
+        "enumMappingMap": {},
+        "statusCode": "countdown_1",
+        "statusFormat": "{\"countdown_1\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"unit\":\"s\",\"min\":0,\"max\":86400,\"scale\":0,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "add_ele",
+        "dpId": 17,
+        "enumMappingMap": {},
+        "statusCode": "add_ele",
+        "statusFormat": "{\"add_ele\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"unit\":\"kwh\",\"min\":0,\"max\":50000,\"scale\":3,\"step\":100}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "cur_current",
+        "dpId": 18,
+        "enumMappingMap": {},
+        "statusCode": "cur_current",
+        "statusFormat": "{\"cur_current\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"unit\":\"mA\",\"min\":0,\"max\":80000,\"scale\":0,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "cur_power",
+        "dpId": 19,
+        "enumMappingMap": {},
+        "statusCode": "cur_power",
+        "statusFormat": "{\"cur_power\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"unit\":\"W\",\"min\":0,\"max\":200000,\"scale\":1,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "cur_voltage",
+        "dpId": 20,
+        "enumMappingMap": {},
+        "statusCode": "cur_voltage",
+        "statusFormat": "{\"cur_voltage\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"unit\":\"V\",\"min\":0,\"max\":5000,\"scale\":1,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "voltage_coe",
+        "dpId": 22,
+        "enumMappingMap": {},
+        "statusCode": "voltage_coe",
+        "statusFormat": "{\"voltage_coe\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"min\":0,\"max\":1000000000,\"scale\":0,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "electric_coe",
+        "dpId": 23,
+        "enumMappingMap": {},
+        "statusCode": "electric_coe",
+        "statusFormat": "{\"electric_coe\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"min\":0,\"max\":1000000000,\"scale\":0,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "power_coe",
+        "dpId": 24,
+        "enumMappingMap": {},
+        "statusCode": "power_coe",
+        "statusFormat": "{\"power_coe\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"min\":0,\"max\":1000000000,\"scale\":0,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "electricity_coe",
+        "dpId": 25,
+        "enumMappingMap": {},
+        "statusCode": "electricity_coe",
+        "statusFormat": "{\"electricity_coe\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"min\":0,\"max\":1000000000,\"scale\":0,\"step\":1}",
+        "valueType": "Integer"
+      },
+      {
+        "dpCode": "fault",
+        "dpId": 26,
+        "enumMappingMap": {},
+        "statusCode": "fault",
+        "statusFormat": "{\"fault\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"label\":[\"ov_cr\",\"ov_vol\",\"ov_pwr\",\"ls_vol\"]}",
+        "valueType": "Bitmap"
+      },
+      {
+        "dpCode": "relay_status",
+        "dpId": 38,
+        "enumMappingMap": {
+          "0": {
+            "code": "relay_status",
+            "value": "power_off"
+          },
+          "1": {
+            "code": "relay_status",
+            "value": "power_on"
+          },
+          "2": {
+            "code": "relay_status",
+            "value": "last"
+          },
+          "memory": {
+            "code": "relay_status",
+            "value": "last"
+          },
+          "off": {
+            "code": "relay_status",
+            "value": "power_off"
+          },
+          "on": {
+            "code": "relay_status",
+            "value": "power_on"
+          }
+        },
+        "statusCode": "relay_status",
+        "statusFormat": "{\"relay_status\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "enum",
+        "valueDesc": "{\"range\":[\"power_off\",\"power_on\",\"last\"]}",
+        "valueType": "Enum"
+      },
+      {
+        "dpCode": "light_mode",
+        "dpId": 39,
+        "enumMappingMap": {},
+        "statusCode": "light_mode",
+        "statusFormat": "{\"light_mode\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{\"range\":[\"relay\",\"pos\",\"none\"]}",
+        "valueType": "Enum"
+      },
+      {
+        "dpCode": "child_lock",
+        "dpId": 40,
+        "enumMappingMap": {},
+        "statusCode": "child_lock",
+        "statusFormat": "{\"child_lock\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{}",
+        "valueType": "Boolean"
+      },
+      {
+        "dpCode": "cycle_time",
+        "dpId": 41,
+        "enumMappingMap": {},
+        "statusCode": "cycle_time",
+        "statusFormat": "{\"cycle_time\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{}",
+        "valueType": "String"
+      },
+      {
+        "dpCode": "random_time",
+        "dpId": 42,
+        "enumMappingMap": {},
+        "statusCode": "random_time",
+        "statusFormat": "{\"random_time\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{}",
+        "valueType": "String"
+      },
+      {
+        "dpCode": "switch_inching",
+        "dpId": 43,
+        "enumMappingMap": {},
+        "statusCode": "switch_inching",
+        "statusFormat": "{\"switch_inching\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{}",
+        "valueType": "String"
+      },
+      {
+        "dpCode": "overcharge_switch",
+        "dpId": 51,
+        "enumMappingMap": {},
+        "statusCode": "overcharge_switch",
+        "statusFormat": "{\"overcharge_switch\":\"$\"}",
+        "supportLocal": true,
+        "valueConvert": "default",
+        "valueDesc": "{}",
+        "valueType": "Boolean"
+      }
+    ],
+    "productKey": "k43w32veclxmc9lb"
+  }
+}
