@@ -19,13 +19,36 @@ Two independent Backends behind it:
 
 ## Build and test
 
-Developed and tested in WSL with no Windows toolchain:
+Developed and tested in WSL with no Windows toolchain: Arch Linux, user
+`wray`, `cargo` from the distro. `Cargo.lock` is committed, so dependency
+versions are fixed; that does not make the crates themselves available.
+
+This WSL has no outbound network (crates.io and `static.crates.io` are
+unreachable). A clean `cargo build` therefore fails, and the README does not
+pretend otherwise:
+
+- with the default `CARGO_HOME` (`~/.cargo`), `cargo build --offline` stops at
+  `no matching package named 'rusqlite' found`; without `--offline` it hangs
+  updating the crates.io index, each attempt waiting 30 s and retrying (still
+  going after 130 s) because `static.crates.io` cannot be reached.
+- the working setup points `CARGO_HOME` at the Windows host's cargo cache
+  (read and written from WSL through `/mnt/c`):
 
 ```console
-cargo build
-cargo test
+export CARGO_HOME=/mnt/c/Users/Wray/.cargo
+export CARGO_TARGET_DIR=/home/wray/work/smarthome/target   # inside WSL, not on /mnt
+cargo build --release
+cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all -- --check
 ```
+
+Point `CARGO_TARGET_DIR` at a path inside WSL: building onto `/mnt/f` is slow
+and cases like `target/` there are easy to commit by accident. The same two
+exports plus `--release` build the binary. To drop the host cache, vendor the
+dependencies (`cargo vendor`) or pre-fill WSL's own registry cache while the
+machine still has a network; until then, those `CARGO_HOME`/`CARGO_TARGET_DIR`
+exports are a prerequisite, not a convenience.
 
 ## Sign in and list Devices
 
