@@ -267,6 +267,7 @@ async fn login_renders_the_qr_on_stderr_and_stores_the_session() {
     let api = MockServer::start().await;
     let endpoint = api.uri();
     mount_login(&login_server, &endpoint).await;
+    mount_plain_devices(&api).await;
 
     let mut cmd = home(&db);
     point_at_tuya(&mut cmd, &login_server, &api);
@@ -331,8 +332,20 @@ async fn login_renders_the_qr_on_stderr_and_stores_the_session() {
         .query()
         .unwrap_or("")
         .contains("usercode=DummyCode1"));
-    // No API request before the login completed.
-    assert!(api.received_requests().await.unwrap().is_empty());
+    // No API request before the login completed; right after it, exactly one
+    // homes call and one devices call per home (the fixture has one home),
+    // which is the Local Key save the sign-in does on its own.
+    let api_requests = api.received_requests().await.unwrap();
+    let paths: Vec<&str> = api_requests.iter().map(|r| r.url.path()).collect();
+    assert_eq!(
+        paths,
+        ["/v1.0/m/life/users/homes", "/v1.0/m/life/ha/home/devices"],
+        "one device list after the sign-in, nothing before it"
+    );
+    assert!(
+        !stderr.contains("fetching Local Keys failed"),
+        "the key fetch must have succeeded: {stderr}"
+    );
 }
 
 #[tokio::test]
@@ -398,6 +411,96 @@ async fn login_without_a_user_code_is_a_usage_error() {
     cmd.env("HOME_TUYA_USER_CODE", "DummyCode1");
     cmd.args(["tuya", "login"]);
     assert_eq!(run(&mut cmd).0, 0);
+}
+
+#[tokio::test]
+async fn login_alone_saves_every_local_key() {
+    let (_dir, db) = temp_db();
+    let login_server = MockServer::start().await;
+    let api = MockServer::start().await;
+    mount_login(&login_server, &api.uri()).await;
+    let (one, two) = (device_one(), device_two());
+    mount_devices_with(
+        &api,
+        vec![(one.clone(), "fake-key-a"), (two.clone(), "fake-key-t-1")],
+    )
+    .await;
+
+    // Only the login runs: no `home tuya devices` command in between.
+    let mut cmd = home(&db);
+    point_at_tuya(&mut cmd, &login_server, &api);
+    cmd.args(["tuya", "login", "--user-code", "DummyCode1"]);
+    let (code, json, stdout, stderr) = run_full(&mut cmd);
+    assert_eq!(code, 0, "{json}; stderr: {stderr}");
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["data"]["backend"], "tuya");
+    assert!(
+        !stdout.contains("fake-key-a") && !stdout.contains("fake-key-t-1"),
+        "a key reached stdout: {stdout}"
+    );
+
+    let mut keys: Vec<(String, String)> = key_rows(&db).into_iter().map(|r| (r.0, r.1)).collect();
+    keys.sort();
+    let mut expected = vec![
+        (one, "fake-key-a".to_string()),
+        (two, "fake-key-t-1".to_string()),
+    ];
+    expected.sort();
+    assert_eq!(keys, expected, "the sign-in must save every Local Key");
+}
+
+/// A device list that fails after a successful sign-in is reported, not
+/// fatal: exit 0, the session stored, no keys, one URL-free note on stderr.
+#[tokio::test]
+async fn a_failed_device_list_leaves_the_login_signed_in() {
+    for status in [404, 500] {
+        let (_dir, db) = temp_db();
+        let login_server = MockServer::start().await;
+        let api = MockServer::start().await;
+        mount_login(&login_server, &api.uri()).await;
+        Mock::given(method("GET"))
+            .and(path("/v1.0/m/life/users/homes"))
+            .respond_with(ResponseTemplate::new(status))
+            .mount(&api)
+            .await;
+
+        let mut cmd = home(&db);
+        point_at_tuya(&mut cmd, &login_server, &api);
+        cmd.args(["tuya", "login", "--user-code", "DummyCode1"]);
+        let (code, json, stdout, stderr) = run_full(&mut cmd);
+        assert_eq!(code, 0, "{status}: {json}; stderr: {stderr}");
+        assert_eq!(json["ok"], true);
+        assert_eq!(json["data"]["backend"], "tuya", "{status}");
+        // The session was saved before the device list was attempted.
+        assert_eq!(credential(&db)["refresh_token"], "dummy-refresh-1");
+        assert_eq!(credential(&db)["access_token"], "dummy-access-1");
+        assert!(key_rows(&db).is_empty(), "{status}: no key could be saved");
+        // The stderr note says what failed, without a token, URL or path.
+        assert!(
+            stderr.contains("signed in, but fetching Local Keys failed"),
+            "{status}: {stderr}"
+        );
+        assert!(
+            stderr.contains(&format!("HTTP {status}")),
+            "{status}: {stderr}"
+        );
+        // stdout's `endpoint` is the fake host by contract; the tokens never
+        // appear on either stream, and stderr carries no URL or path.
+        for secret in ["dummy-access-1", "dummy-refresh-1"] {
+            assert!(
+                !stderr.contains(secret),
+                "{status}: `{secret}` leaked to stderr: {stderr}"
+            );
+            assert!(!stdout.contains(secret), "{status}: `{secret}` in stdout");
+        }
+        let host = api.uri();
+        for secret in [host.as_str(), "/v1.0/m/"] {
+            assert!(
+                !stderr.contains(secret),
+                "{status}: `{secret}` leaked to stderr: {stderr}"
+            );
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -8,8 +8,11 @@
 
 CLI wiring (`home tuya login|devices|keys`) is in (commits in
 `.scratch/smarthome-v1/build-notes-0304.md` `## final integration`).
-All offline criteria pass — `cargo test --test tuya_04` 12/12,
-`cargo test -p tuya-backend` 19/19, full workspace gates green. The one
+A successful sign-in now fetches one device list and saves every Local Key,
+so `home tuya login` alone backs the keys up; a failed fetch is reported on
+stderr and still leaves the sign-in done (exit 0). All offline criteria pass
+— `cargo test --test tuya_04` 17/17, `cargo test -p tuya-backend` 23/23,
+full workspace gates green. The one
 manual step still open is the real Smart Life QR scan against the real
 account (see `.scratch/smarthome-v1/build-notes-0304.md`, `## live steps`).
 No write command exists in this ticket; never send any write to LAB.

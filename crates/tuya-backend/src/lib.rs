@@ -17,8 +17,10 @@
 //! - [`sign`]: the request signing and AES-GCM sealing, byte-for-byte the
 //!   official Python SDK's, checked against its fixed vectors.
 //!
-//! Every call goes through one [`session::TuyaClient`], so requests are
-//! serialised and a rotated refresh token is persisted before it is used.
+//! The QR start and poll use [`session::http_client`]; every call after the
+//! sign-in — the first device list, which saves the Local Keys, and every
+//! later command — goes through the one [`session::TuyaClient`], so requests
+//! are serialised and a rotated refresh token is persisted before it is used.
 //! This crate depends on `home-store` and nothing else in the workspace; it
 //! never depends on the Google Home Backend.
 //!
@@ -48,13 +50,16 @@ pub use session::{Failure, Session, TuyaClient, BACKEND};
 
 use home_store::{ErrorBody, Exit, Store};
 
-/// `home tuya login`: run the QR sign-in and report metadata only.
+/// `home tuya login`: run the QR sign-in, save every Local Key, and report
+/// metadata only.
 ///
 /// `user_code` falls back to `HOME_TUYA_USER_CODE`; with neither, it is a
 /// usage error. `announce` receives the pending sign-in once, so the caller
-/// writes the QR to stderr while stdout stays a single JSON document. The
-/// returned value carries no token: `{"backend":"tuya","endpoint":…,
-/// "uid":…, "expires_at":…}`.
+/// writes the QR to stderr while stdout stays a single JSON document. After
+/// the session is saved, one device list is fetched so the keys are stored
+/// without a separate `home tuya devices`; that fetch failing is reported on
+/// stderr and never fails the sign-in. The returned value carries no token:
+/// `{"backend":"tuya","endpoint":…, "uid":…, "expires_at":…}`.
 pub fn login_command(
     cfg: &Config,
     store: &Store,
@@ -75,6 +80,17 @@ pub fn login_command(
             )
         })?;
     let session = login(cfg, store, &code, announce).map_err(into_pair)?;
+    // The session is already saved; fetching the Local Keys now means a
+    // sign-in alone backs them up. A failure here must not undo the sign-in,
+    // and its message is the URL-free one every Tuya failure carries.
+    if let Err(failure) = TuyaClient::with_session(session.clone(), cfg, store)
+        .and_then(|client| devices::list_devices(&client))
+    {
+        eprintln!(
+            "signed in, but fetching Local Keys failed: {}",
+            failure.body.message
+        );
+    }
     Ok(serde_json::json!({
         "backend": BACKEND,
         "endpoint": session.endpoint,

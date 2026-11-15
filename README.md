@@ -124,7 +124,10 @@ home tuya keys > ~/tuya-keys.json  # back this up, off this machine
 ```
 
 `home tuya devices` prints ID, name, online state, category and Backend, and
-saves every Local Key it sees. `home tuya keys` exports them as JSON
+saves every Local Key it sees. A successful sign-in already fetches one
+device list and saves every Local Key it returns, so `home tuya login` alone
+backs them up; `home tuya devices` refreshes them on every run.
+`home tuya keys` exports them as JSON
 (`device_id`, `local_key`, `first_seen_at`, `changed_at`) for the Vendor Exit.
 Treat that file as a secret: it belongs in your backups, never in git. A
 changed key keeps the old one in history with the time it was replaced.
