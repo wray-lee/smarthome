@@ -40,6 +40,17 @@ home gh devices
 Both commands print one JSON document. `home gh login` stores the master
 token and the fixed Android id in SQLite.
 
+`home gh login` does not verify the master token: anything that starts with
+`aas_et/` (or `oauth2_4/`, which is exchanged first) is stored, and a bad
+token surfaces at the first `home gh devices` as `reauth_required` (exit 5).
+Login never calls foyer, so it contacts Google only for the `oauth_token`
+exchange.
+
+The Android id is bound to the master token (every Bearer is minted for it),
+so a repeated login reuses the stored one. `--android_id <ID>` replaces it
+and drops the cached Bearer. `--help` and `--version` print their text on
+stderr and still write one JSON document to stdout.
+
 ## The database
 
 One file, path from `--db` or `HOME_DB`, default

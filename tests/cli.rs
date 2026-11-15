@@ -17,12 +17,41 @@ fn home(db: &Path) -> Command {
     cmd
 }
 
-fn run(cmd: &mut Command) -> (i32, serde_json::Value) {
+/// Run the binary and demand exactly one JSON document on stdout. Trailing
+/// whitespace is allowed; a second value or any prose is not.
+fn run_full(cmd: &mut Command) -> (i32, serde_json::Value, String, String) {
     let out = cmd.output().expect("running the home binary");
     let stdout = String::from_utf8(out.stdout).expect("stdout is UTF-8");
-    let value: serde_json::Value = serde_json::from_str(&stdout)
-        .unwrap_or_else(|e| panic!("stdout is not one JSON document ({e}): {stdout:?}"));
-    (out.status.code().expect("an exit code"), value)
+    let stderr = String::from_utf8(out.stderr).expect("stderr is UTF-8");
+    let mut documents =
+        serde_json::Deserializer::from_str(&stdout).into_iter::<serde_json::Value>();
+    let value = documents
+        .next()
+        .unwrap_or_else(|| panic!("stdout is not JSON: {stdout:?}; stderr: {stderr:?}"))
+        .unwrap_or_else(|e| {
+            panic!("stdout is not one JSON document ({e}): {stdout:?}; stderr: {stderr:?}")
+        });
+    let end = documents.byte_offset();
+    assert!(
+        documents.next().is_none(),
+        "stdout holds more than one JSON document: {stdout:?}"
+    );
+    assert!(
+        stdout[end..].trim().is_empty(),
+        "stdout holds trailing non-JSON bytes: {stdout:?}"
+    );
+
+    (
+        out.status.code().expect("an exit code"),
+        value,
+        stdout,
+        stderr,
+    )
+}
+
+fn run(cmd: &mut Command) -> (i32, serde_json::Value) {
+    let (code, value, _, _) = run_full(cmd);
+    (code, value)
 }
 
 fn temp_db() -> (tempfile::TempDir, PathBuf) {
@@ -303,4 +332,112 @@ async fn protecting_a_device_without_a_backend_is_exit_2() {
     let (code, json) = run(&mut cmd);
     assert_eq!(code, 2, "{json}");
     assert_eq!(json["error"]["code"], "usage");
+}
+
+/// `--help` and `--version` keep clap's text on stderr; stdout stays one JSON
+/// document and the exit code is 0.
+#[tokio::test]
+async fn help_and_version_put_their_text_on_stderr_and_one_json_on_stdout() {
+    let (_dir, db) = temp_db();
+    for (args, marker) in [
+        (&["--help"][..], "Usage: home"),
+        (&["--version"][..], "home 0.1.0"),
+        (&["gh", "--help"][..], "Usage: home gh"),
+        (&["protect", "--help"][..], "Usage: home protect"),
+    ] {
+        let mut cmd = home(&db);
+        cmd.args(args);
+        let (code, json, stdout, stderr) = run_full(&mut cmd);
+        assert_eq!(code, 0, "{args:?}: {stdout} {stderr}");
+        assert_eq!(json["ok"], true, "{args:?}: {stdout}");
+        assert_eq!(json["data"], serde_json::json!({}), "{args:?}");
+        assert!(
+            stderr.contains(marker),
+            "{args:?}: the help text must reach stderr, got {stderr:?}"
+        );
+        assert!(
+            !stdout.contains("Usage:") && !stdout.contains("home 0.1.0"),
+            "{args:?}: the help text must not reach stdout: {stdout:?}"
+        );
+    }
+}
+
+/// The guard line some clients6 answers carry must not turn a device list
+/// into an upstream error, nor leak into the printed JSON.
+#[tokio::test]
+async fn a_foyer_answer_with_the_xssi_guard_still_lists_devices() {
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    login(&db, &foyer, &auth);
+    let guarded = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(
+            "/$rpc/google.internal.home.foyer.v1.StructuresService/GetHomeGraph",
+        ))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_string(format!(")]}}'\n{GRAPH}")),
+        )
+        .mount(&guarded)
+        .await;
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &guarded, &auth);
+    cmd.args(["gh", "devices"]);
+    let (code, json) = run(&mut cmd);
+    assert_eq!(code, 0, "{json}");
+    assert_eq!(json["ok"], true);
+    let devices = json["data"].as_array().expect("a device array");
+    assert_eq!(devices.len(), 2);
+    assert_eq!(devices[0]["name"], "Home");
+    assert_eq!(devices[1]["room"], "实验室");
+}
+
+/// A repeated login keeps the Android id the master token was bound to.
+#[tokio::test]
+async fn a_second_login_keeps_the_stored_android_id() {
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    login(&db, &foyer, &auth);
+    let first = stored_android_id(&db);
+    login(&db, &foyer, &auth);
+    let second = stored_android_id(&db);
+    assert_eq!(first.len(), 16);
+    assert_eq!(
+        first, second,
+        "a second login must not rotate the Android id"
+    );
+
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &foyer, &auth);
+    cmd.args(["gh", "login", "--email", "user@example.com", "--android-id"]);
+    cmd.arg("fedcba9876543210");
+    cmd.stdin(std::process::Stdio::piped());
+    let mut child = cmd.spawn().expect("spawning login");
+    use std::io::Write;
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"aas_et/dummy-master\n")
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(0), "{:?}", out.stdout);
+    assert_eq!(stored_android_id(&db), "fedcba9876543210");
+}
+
+fn stored_android_id(db: &Path) -> String {
+    let conn = rusqlite::Connection::open(db).unwrap();
+    let cred: String = conn
+        .query_row(
+            "SELECT json FROM credentials WHERE backend = 'google_home'",
+            [],
+            |r| r.get(0),
+        )
+        .expect("the credential is stored");
+    let cred: serde_json::Value = serde_json::from_str(&cred).unwrap();
+    cred["android_id"]
+        .as_str()
+        .expect("the credential carries an Android id")
+        .to_string()
 }

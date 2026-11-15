@@ -4,6 +4,7 @@
 use std::io::Read;
 use std::path::PathBuf;
 
+use clap::error::ErrorKind;
 use clap::{Args, Parser, Subcommand};
 use ghome_backend::{config, gpsoauth, Credential, Session, BACKEND as GH};
 use home_store::contract::{ok, ErrorBody, Exit};
@@ -42,7 +43,7 @@ struct LoginArgs {
     /// The Google account the token belongs to.
     #[arg(long, env = "HOME_GH_EMAIL", value_name = "EMAIL")]
     email: Option<String>,
-    /// Reuse a known Android id instead of generating one.
+    /// Replace the stored Android id instead of reusing it.
     #[arg(long, value_name = "ID")]
     android_id: Option<String>,
 }
@@ -62,16 +63,15 @@ struct ProtectArgs {
 fn main() {
     let cli = match Cli::try_parse() {
         Ok(cli) => cli,
-        Err(e) => {
-            use clap::error::ErrorKind;
-            match e.kind() {
-                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
-                    print!("{e}");
-                    std::process::exit(0);
-                }
-                _ => fail(ErrorBody::usage(e.to_string()), Exit::Usage),
+        Err(e) => match e.kind() {
+            // `--help` and `--version` are informational, so their text goes
+            // to stderr; stdout still carries exactly one JSON document.
+            ErrorKind::DisplayHelp | ErrorKind::DisplayVersion => {
+                eprint!("{e}");
+                emit(ok(serde_json::json!({})), Exit::Ok);
             }
-        }
+            _ => fail(ErrorBody::usage(e.to_string()), Exit::Usage),
+        },
     };
     match run(&cli) {
         Ok(value) => emit(ok(value), Exit::Ok),
@@ -134,10 +134,18 @@ fn login(store: &Store, args: &LoginArgs) -> Result<serde_json::Value, (ErrorBod
             Exit::Usage,
         ));
     }
-    let android_id = args
-        .android_id
-        .clone()
-        .unwrap_or_else(gpsoauth::new_android_id);
+    // The Android id is bound to the master token and every Bearer minted
+    // from it, so a second login keeps the stored one; only an explicit
+    // `--android_id` replaces it. The token is not verified here: a bad one
+    // shows up at the first `home gh devices` (see README).
+    let stored = Credential::load(store).map_err(storage)?;
+    let android_id = match &args.android_id {
+        Some(id) => id.clone(),
+        None => match &stored {
+            Some(stored) => stored.android_id.clone(),
+            None => gpsoauth::new_android_id(),
+        },
+    };
     let master = if token.starts_with(gpsoauth::MASTER_TOKEN_PREFIX) {
         token
     } else if token.starts_with(gpsoauth::OAUTH_TOKEN_PREFIX) {
@@ -159,12 +167,18 @@ fn login(store: &Store, args: &LoginArgs) -> Result<serde_json::Value, (ErrorBod
             Exit::Usage,
         ));
     };
+    // A cached Bearer outlives a re-login only while the identity behind it
+    // stays the same: the Android id and the minting account.
+    let keeps_bearer = stored
+        .filter(|old| old.android_id == android_id && old.email == email)
+        .and_then(|old| old.bearer.zip(old.bearer_expires_at));
+    let (bearer, bearer_expires_at) = keeps_bearer.unzip();
     Credential {
         master,
         android_id,
         email,
-        bearer: None,
-        bearer_expires_at: None,
+        bearer,
+        bearer_expires_at,
     }
     .save(store)
     .map_err(storage)?;

@@ -120,7 +120,7 @@ fn post(
             (
                 ErrorBody::new(
                     "upstream",
-                    format!("android auth endpoint: {}", e.without_url()),
+                    format!("android auth endpoint: {}", crate::foyer::describe(e)),
                 ),
                 Exit::Upstream,
             )
@@ -130,7 +130,10 @@ fn post(
         (
             ErrorBody::new(
                 "upstream",
-                format!("reading the android auth response: {}", e.without_url()),
+                format!(
+                    "reading the android auth response: {}",
+                    crate::foyer::describe(e)
+                ),
             ),
             Exit::Upstream,
         )
@@ -248,5 +251,38 @@ mod tests {
         let id = new_android_id();
         assert_eq!(id.len(), 16);
         assert!(id.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    /// The form holds a master or oauth token, and a 307 would re-send it.
+    /// The shared client refuses the hop, and the other host stays untouched.
+    #[test]
+    fn a_token_form_refused_a_redirect_says_why_and_goes_no_further() {
+        use crate::foyer::tests::{ok_body, redirect_to, stub};
+        use std::sync::atomic::Ordering;
+
+        let elsewhere = stub(ok_body(""));
+        let first = stub(redirect_to(&format!("{}/elsewhere", elsewhere.url)));
+        let client = crate::foyer::client();
+        let form = [("Token".to_string(), "dummy".to_string())];
+        let err = post(&client, &format!("{}/auth", first.url), &form).unwrap_err();
+        assert_eq!(err.1.code(), 7);
+        assert!(err.0.message.contains("another host"), "{}", err.0.message);
+        assert_eq!(
+            elsewhere.hits.load(Ordering::SeqCst),
+            0,
+            "the second host must never be contacted"
+        );
+        let first_requests = first.requests.lock().unwrap();
+        assert_eq!(first_requests.len(), 1);
+        assert!(
+            String::from_utf8_lossy(&first_requests[0]).contains("Token=dummy"),
+            "the form reached only the original host"
+        );
+        assert!(
+            !String::from_utf8_lossy(&first_requests[0])
+                .to_ascii_lowercase()
+                .contains("x-goog-api-key"),
+            "a form request carries no API key"
+        );
     }
 }
