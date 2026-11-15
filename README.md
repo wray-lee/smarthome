@@ -7,7 +7,12 @@ Two independent Backends behind it:
 
 - **Google Home** (`home gh …`) — operates any Device in your Google Home,
   through the unofficial foyer API. See `docs/adr/0001`.
-- **Tuya** (`home tuya …`) — direct Tuya access for Telemetry. Not built yet.
+- **Tuya** (`home tuya …`) — direct Tuya access (QR login, device list, Local
+  Key backup); Control and Telemetry are the next ticket.
+
+The two Backends are independent crates and never depend on each other. The
+Google Home Backend exposes only `list_devices`, `get_state` and `set_trait`
+to the rest of the workspace — the seam for a future Home MCP implementation.
 
 ## Layout
 
@@ -15,6 +20,8 @@ Two independent Backends behind it:
   contract, and the one write guard for protected Devices.
 - `crates/ghome-backend` — the Google Home Backend, forked from
   `piekstra/google-home-cli` v0.10.0 (MIT; see `LICENSE-ghome` there).
+- `crates/tuya-backend` — the Tuya Backend, ported from `lueur`'s MIT
+  `tuya_cloud.rs` (see `LICENSE-tuya` there).
 - `src/main.rs` — the `home` binary.
 
 ## Build and test
@@ -74,6 +81,57 @@ so a repeated login reuses the stored one. `--android_id <ID>` replaces it
 and drops the cached Bearer. `--help` and `--version` print their text on
 stderr and still write one JSON document to stdout.
 
+## Read and operate Google Home Devices
+
+A Device can be named by exact ID, by `room/name`, or by bare name; matching
+is case-insensitive, and a name that matches more than one Device fails with
+exit 3 and the candidates instead of guessing.
+
+```console
+home gh get 客厅/lamp
+home gh set 客厅/lamp onOff false
+home gh set 客厅/lamp brightness 75
+home gh set 客厅/lamp color.colorTemperature 3000
+home gh set 客厅/lamp thermostat 21 --mode heat
+home gh set 客厅/lamp volume.currentVolume 30
+```
+
+`<trait>` accepts `onOff`, `brightness`, `color.colorTemperature`,
+`volume.currentVolume`, `lockUnlock.isLocked`, `armDisarm.isArmed` and
+`thermostat`. A thermostat needs both a mode and a setpoint (`<value>` may be
+either, the flags supply the other). `home gh get` prints the current traits
+under `traits`; `home gh set` prints the resulting state plus `changed`.
+
+Unlocking a lock or disarming an alarm is a Sensitive Action: without
+`--confirm` it is refused with exit 6 and nothing is sent upstream. A
+protected Device is refused with exit 6 even with `--confirm`; reading it
+still works.
+
+## Sign in to Tuya and back up Local Keys
+
+`home tuya login` renders a QR code in the terminal (stderr) and polls until
+the Smart Life app scans it; the tokens and the regional endpoint are then
+stored in SQLite. The user code it asks for is in the app under Me →
+Settings → Account and Security → User Code, and can come from
+`HOME_TUYA_USER_CODE` instead of `--user-code` (it is not a secret, but argv
+is visible to other processes, so the env var is preferred):
+
+```console
+home tuya login                    # or: HOME_TUYA_USER_CODE=… home tuya login
+home tuya devices
+home tuya keys > ~/tuya-keys.json  # back this up, off this machine
+```
+
+`home tuya devices` prints ID, name, online state, category and Backend, and
+saves every Local Key it sees. `home tuya keys` exports them as JSON
+(`device_id`, `local_key`, `first_seen_at`, `changed_at`) for the Vendor Exit.
+Treat that file as a secret: it belongs in your backups, never in git. A
+changed key keeps the old one in history with the time it was replaced.
+
+The QR sign-in needs no Tuya IoT developer platform. It was validated on a
+non-China account; on a China-region account the hard-coded login host has
+reportedly failed.
+
 ## The database
 
 One file, path from `--db` or `HOME_DB`, default
@@ -97,4 +155,7 @@ bypasses it. Nothing is protected by default.
 ## Upstream overrides
 
 For tests: `HOME_FOYER_URL` (foyer RPC prefix), `HOME_GPSOAUTH_URL` (Android
-account-token endpoint).
+account-token endpoint), `HOME_TUYA_LOGIN_URL` (QR login base),
+`HOME_TUYA_ENDPOINT` (regional API base; a loopback host is accepted for
+tests), `HOME_TUYA_USER_CODE`, `HOME_TUYA_POLL_MS` and
+`HOME_TUYA_POLL_ATTEMPTS` (QR poll interval and count).

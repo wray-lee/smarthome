@@ -26,6 +26,9 @@ enum Command {
     /// Google Home backend.
     #[command(subcommand)]
     Gh(GhCmd),
+    /// Tuya backend.
+    #[command(subcommand)]
+    Tuya(TuyaCmd),
     /// Add, list or remove protected Devices. They are refused by every write.
     Protect(ProtectArgs),
 }
@@ -36,6 +39,52 @@ enum GhCmd {
     Login(LoginArgs),
     /// Print every Google Home Device as JSON.
     Devices,
+    /// Print one Device's current trait state.
+    Get {
+        /// Device ID, room/name, or bare name (case-insensitive).
+        device: String,
+    },
+    /// Change one trait of one Device.
+    Set(SetArgs),
+}
+
+#[derive(Args, Debug)]
+struct SetArgs {
+    /// Device ID, room/name, or bare name (case-insensitive).
+    device: String,
+    /// onOff | brightness | color.colorTemperature | volume.currentVolume
+    /// | lockUnlock.isLocked | armDisarm.isArmed | thermostat
+    #[arg(name = "trait")]
+    trait_name: String,
+    /// The new value; for thermostat either the setpoint or the mode.
+    value: String,
+    /// Thermostat mode, e.g. heat.
+    #[arg(long, value_name = "MODE")]
+    mode: Option<String>,
+    /// Thermostat setpoint in degrees.
+    #[arg(long, value_name = "N")]
+    setpoint: Option<f64>,
+    /// Allow a Sensitive Action (unlock, disarm).
+    #[arg(long)]
+    confirm: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum TuyaCmd {
+    /// Sign in by scanning a QR code with the Smart Life app.
+    Login(TuyaLoginArgs),
+    /// Print every Tuya Device as JSON.
+    Devices,
+    /// Print every saved Local Key as JSON, for the Vendor Exit backup.
+    Keys,
+}
+
+#[derive(Args, Debug)]
+struct TuyaLoginArgs {
+    /// Smart Life user code (Me → Settings → Account and Security); the code
+    /// itself is not secret, but it is read from HOME_TUYA_USER_CODE too.
+    #[arg(long, value_name = "CODE")]
+    user_code: Option<String>,
 }
 
 #[derive(Args, Debug)]
@@ -109,7 +158,17 @@ fn run(cli: &Cli) -> Result<serde_json::Value, (ErrorBody, Exit)> {
         Command::Gh(cmd) => match cmd {
             GhCmd::Login(args) => login(&store, args),
             GhCmd::Devices => devices(store),
+            GhCmd::Get { device } => get(&store, device),
+            GhCmd::Set(args) => set(&store, args),
         },
+        Command::Tuya(cmd) => {
+            let cfg = tuya_backend::Config::from_env();
+            match cmd {
+                TuyaCmd::Login(args) => tuya_login(&cfg, &store, args),
+                TuyaCmd::Devices => tuya_backend::devices_command(&cfg, &store),
+                TuyaCmd::Keys => tuya_backend::keys_command(&cfg, &store),
+            }
+        }
         Command::Protect(args) => protect(&store, args),
     }
 }
@@ -194,6 +253,40 @@ fn devices(store: Store) -> Result<serde_json::Value, (ErrorBody, Exit)> {
         .cache_devices(GH, &list.to_string())
         .map_err(storage)?;
     Ok(list)
+}
+
+/// `home gh get <device>`: one Device's current traits.
+fn get(store: &Store, device: &str) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    let cfg = config::Config::from_env();
+    let mut session = Session::open(store, cfg)?;
+    ghome_backend::get_state(&mut session, store, device)
+}
+
+/// `home gh set <device> <trait> <value> [--mode M] [--setpoint N] [--confirm]`.
+fn set(store: &Store, args: &SetArgs) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    let cfg = config::Config::from_env();
+    let mut session = Session::open(store, cfg)?;
+    let change = ghome_backend::TraitChange::parse(
+        &args.trait_name,
+        &args.value,
+        args.mode.as_deref(),
+        args.setpoint,
+    )?;
+    ghome_backend::set_trait(&mut session, store, &args.device, change, args.confirm)
+}
+
+/// `home tuya login [--user-code CODE]`: the QR goes to stderr, stdout keeps
+/// one JSON document.
+fn tuya_login(
+    cfg: &tuya_backend::Config,
+    store: &Store,
+    args: &TuyaLoginArgs,
+) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    let mut announce = |pending: &tuya_backend::Pending| {
+        eprintln!("Scan this QR code with the Smart Life app:");
+        eprintln!("{}", pending.qr_terminal);
+    };
+    tuya_backend::login_command(cfg, store, args.user_code.as_deref(), &mut announce)
 }
 
 fn protect(store: &Store, args: &ProtectArgs) -> Result<serde_json::Value, (ErrorBody, Exit)> {
