@@ -28,6 +28,14 @@ pub struct Device {
     pub kind: Option<String>,
     pub traits: Vec<String>,
     pub room: Option<String>,
+    /// The Linked Service's id (for example `tuya-smart-cee31`). Only
+    /// `UpdateTraits` needs it, so it is skipped in the public JSON.
+    #[serde(skip_serializing)]
+    pub agent_id: Option<String>,
+    /// The Linked Service's own id for the Device (`…_all`). Internal, like
+    /// `agent_id`: an `UpdateTraits` entry must carry both.
+    #[serde(skip_serializing)]
+    pub partner_device_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -63,6 +71,7 @@ fn parse_room(v: &Value) -> Option<Room> {
 
 fn parse_device(v: &Value) -> Option<Device> {
     let id = string(at(at(v, 0), 0))?;
+    let partner = at(v, 0).get(1);
     Some(Device {
         id,
         name: string(at(v, 3)).unwrap_or_default(),
@@ -72,6 +81,8 @@ fn parse_device(v: &Value) -> Option<Device> {
             .map(|a| a.iter().filter_map(string).collect())
             .unwrap_or_default(),
         room: None,
+        agent_id: partner.and_then(|p| string(at(p, 0))),
+        partner_device_id: partner.and_then(|p| string(at(p, 1))),
     })
 }
 

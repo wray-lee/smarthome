@@ -18,6 +18,7 @@ use crate::{reauth, Session};
 
 pub const STRUCTURES: &str = "StructuresService";
 pub const GET_HOME_GRAPH: &str = "GetHomeGraph";
+pub const HOME_CONTROL: &str = "HomeControlService";
 const CONTENT_TYPE: &str = "application/json+protobuf";
 const X_USER_AGENT: &str = "grpc-web-javascript/0.1";
 /// The same ceiling reqwest's default policy uses.
@@ -107,7 +108,19 @@ pub fn rpc(
     method: &str,
     body: &Value,
 ) -> Result<Value, (ErrorBody, Exit)> {
-    let url = url_for(&session.cfg().foyer_url, STRUCTURES, method);
+    rpc_service(session, store, STRUCTURES, method, body)
+}
+
+/// [`rpc`] against any service: `StructuresService` for the home graph,
+/// `HomeControlService` for traits.
+pub fn rpc_service(
+    session: &mut Session,
+    store: &Store,
+    service: &str,
+    method: &str,
+    body: &Value,
+) -> Result<Value, (ErrorBody, Exit)> {
+    let url = url_for(&session.cfg().foyer_url, service, method);
     let bearer = session.bearer(store)?;
     let (status, text) = post(session.client(), &url, body, &bearer)?;
     let (status, text) = if status == 401 || status == 403 {
