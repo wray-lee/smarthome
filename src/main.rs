@@ -77,6 +77,30 @@ enum TuyaCmd {
     Devices,
     /// Print every saved Local Key as JSON, for the Vendor Exit backup.
     Keys,
+    /// Turn a Tuya Device on.
+    On {
+        /// Device ID or name (case-insensitive).
+        device: String,
+    },
+    /// Turn a Tuya Device off.
+    Off {
+        /// Device ID or name (case-insensitive).
+        device: String,
+    },
+    /// Print data points, Telemetry and calibration for one Tuya Device.
+    Get {
+        /// Device ID or name (case-insensitive).
+        device: String,
+    },
+    /// Write one raw data point of a Tuya Device.
+    Set {
+        /// Device ID or name (case-insensitive).
+        device: String,
+        /// The data point code, e.g. switch_1.
+        code: String,
+        /// The raw value to write.
+        value: String,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -167,6 +191,16 @@ fn run(cli: &Cli) -> Result<serde_json::Value, (ErrorBody, Exit)> {
                 TuyaCmd::Login(args) => tuya_login(&cfg, &store, args),
                 TuyaCmd::Devices => tuya_backend::devices_command(&cfg, &store),
                 TuyaCmd::Keys => tuya_backend::keys_command(&cfg, &store),
+                TuyaCmd::On { device } => tuya_backend::on_off_command(&cfg, &store, device, true),
+                TuyaCmd::Off { device } => {
+                    tuya_backend::on_off_command(&cfg, &store, device, false)
+                }
+                TuyaCmd::Get { device } => tuya_backend::get_command(&cfg, &store, device),
+                TuyaCmd::Set {
+                    device,
+                    code,
+                    value,
+                } => tuya_backend::set_command(&cfg, &store, device, code, value),
             }
         }
         Command::Protect(args) => protect(&store, args),

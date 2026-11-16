@@ -4,17 +4,36 @@
 
 **Blocked by:** 04 — Tuya QR login, device list, and Local Key backup
 
-**Status:** ready-for-agent
+**Status:** in-progress (awaiting live test)
 
-- [ ] `home tuya on|off <device>` sends the switch command. Device resolution follows the same rules as ticket 03
-- [ ] `home tuya get <device>` prints all data points. Telemetry points appear as `{raw, scale, value, unit}`, with the scale taken from the Device's declared specification and never from hard-coded DP numbers
-- [ ] `home tuya set <device> <code> <value>` writes any raw data point
-- [ ] `1108` is retried up to twice. `sign invalid` and `1010` give exit 5 with `reauth_required` naming the Tuya Backend
-- [ ] Identical commands sent in quick succession are all sent (no silent 10-second drop)
-- [ ] An offline Device gives exit 4
-- [ ] `on`/`off`/`set` on a protected Device (ticket 02) gives exit 6 with a `protected` error and is never sent upstream (asserted on the fake: zero command requests). `get` and Telemetry still work
-- [ ] Calibration data points (`voltage_coe`, `electric_coe`, `power_coe`, `electricity_coe`) are reported separately from Telemetry, not as readings
+- [x] `home tuya on|off <device>` sends the switch command. Device resolution follows the same rules as ticket 03
+- [x] `home tuya get <device>` prints all data points. Telemetry points appear as `{raw, scale, value, unit}`, with the scale taken from the Device's declared specification and never from hard-coded DP numbers
+- [x] `home tuya set <device> <code> <value>` writes any raw data point
+- [x] `1108` is retried up to twice. `sign invalid` and `1010` give exit 5 with `reauth_required` naming the Tuya Backend
+- [x] Identical commands sent in quick succession are all sent (no silent 10-second drop)
+- [x] An offline Device gives exit 4
+- [x] `on`/`off`/`set` on a protected Device (ticket 02) gives exit 6 with a `protected` error and is never sent upstream (asserted on the fake: zero command requests). `get` and Telemetry still work
+- [x] Calibration data points (`voltage_coe`, `electric_coe`, `power_coe`, `electricity_coe`) are reported separately from Telemetry, not as readings
 - [ ] Live checks against the real account target only the Home plug. Never send any write to LAB
 - [ ] Live guard test on the Home plug (Tuya ID: real ID, see the device table in the local, untracked `.scratch/smarthome-v1/validation.md`), same steps as ticket 03: protect, `home tuya off` gives exit 6, state unchanged on readback, remove protection, normal off/on works, leave it on
 - [ ] Only after both live guard tests (03 and 05) pass: `home protect` LAB on both Backends (Tuya and Google Home IDs: real IDs, see the device table in the local, untracked `.scratch/smarthome-v1/validation.md`), confirm `home protect --list` shows both, and confirm a write attempt on LAB gives exit 6 by checking the guard with the fake upstream, not the real plug
-- [ ] Black-box tests cover every criterion above against the fake Tuya upstream, including a Device whose declared scale disagrees with its raw values
+- [x] Black-box tests cover every criterion above against the fake Tuya upstream, including a Device whose declared scale disagrees with its raw values
+
+## Offline implementation summary
+
+Implemented the offline-verifiable part of ticket 05 (control plus Telemetry,
+never against a real account): `home tuya on|off <device>` sends `switch_1`;
+`get` reports data points with `{raw, scale, value, unit}` Telemetry and the
+four calibration points separately; `set` writes one raw data point converted
+by its declared type; `1108` is retried up to twice, `sign invalid` and
+`1010` give exit 5 `reauth_required` for the Tuya Backend; repeated identical
+commands are all sent; an offline Device gives exit 4; `on`/`off`/`set` on a
+protected Device give exit 6 with zero command requests while `get` still
+works. Test coverage: `cargo test --test tuya_05` 13/13,
+`cargo test -p tuya-backend` 28/28, full workspace gate green. Committed as
+`ddfb0ce`. The live steps land in `build-notes-0304.md` under the exact
+heading:
+
+### Live steps (ticket 05, human-in-the-loop)
+
+(Real Home/LAB IDs stay in the untracked `.scratch/smarthome-v1/validation.md`.)

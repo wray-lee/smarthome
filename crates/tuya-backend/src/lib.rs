@@ -38,6 +38,7 @@
 #![forbid(unsafe_code)]
 
 pub mod config;
+pub mod control;
 pub mod devices;
 pub mod login;
 pub mod session;
@@ -122,6 +123,36 @@ pub fn devices_command(
 pub fn keys_command(_cfg: &Config, store: &Store) -> Result<serde_json::Value, (ErrorBody, Exit)> {
     // No network call: keys come straight from SQLite.
     devices::local_keys(store).map_err(into_pair)
+}
+
+/// `home tuya on|off <device>`: the switch command.
+pub fn on_off_command(
+    cfg: &Config,
+    store: &Store,
+    device: &str,
+    on: bool,
+) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    control::on_off_command(cfg, store, device, on)
+}
+
+/// `home tuya get <device>`: data points, Telemetry and calibration.
+pub fn get_command(
+    cfg: &Config,
+    store: &Store,
+    device: &str,
+) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    control::get_command(cfg, store, device)
+}
+
+/// `home tuya set <device> <code> <value>`: one raw data point.
+pub fn set_command(
+    cfg: &Config,
+    store: &Store,
+    device: &str,
+    code: &str,
+    value: &str,
+) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    control::set_command(cfg, store, device, code, value)
 }
 
 #[cfg(test)]

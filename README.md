@@ -8,7 +8,7 @@ Two independent Backends behind it:
 - **Google Home** (`home gh …`) — operates any Device in your Google Home,
   through the unofficial foyer API. See `docs/adr/0001`.
 - **Tuya** (`home tuya …`) — direct Tuya access (QR login, device list, Local
-  Key backup); Control and Telemetry are the next ticket.
+  Key backup, Cloud Control, Telemetry).
 
 The two Backends are independent crates and never depend on each other. The
 Google Home Backend exposes only `list_devices`, `get_state` and `set_trait`
@@ -135,6 +135,43 @@ changed key keeps the old one in history with the time it was replaced.
 The QR sign-in needs no Tuya IoT developer platform. It was validated on a
 non-China account; on a China-region account the hard-coded login host has
 reportedly failed.
+
+## Control and read Telemetry
+
+One Device is named by exact ID or by bare name, case-insensitive (a Tuya
+Device row carries no `room`, so `room/name` does not apply here; an exact ID
+wins over a name that spells it, and a repeated name is exit 3 with the
+candidates). Tuya Device rows have no `room` field.
+
+```console
+home tuya on <device>                       # switch_1 = true
+home tuya off <device>                      # switch_1 = false
+home tuya get <device>                      # data points + Telemetry + calibration
+home tuya set <device> <code> <value>       # one raw data point, e.g. child_lock true
+```
+
+`on`/`off` send `switch_1`; the answer is `changed` with the code and the new
+value. `set` finds the code in the declared specification and converts the
+value to its declared type (`Boolean` accepts `true`/`false`, `Integer`
+accepts a decimal integer, anything else stays a string), writes the raw
+value, and does not re-read: `get` is the read path. An unknown code or a
+value that does not convert fails with exit 2 and sends nothing.
+
+`get` prints under `data_points` every point of the Device's status, in order,
+each with `code`, `value` and, when the specification declares one, `type`.
+`telemetry` holds the measured readings as `{raw, scale, value, unit}` where
+`scale` and `unit` come from the Device's declared specification (never from
+hard-coded DP numbers) and `value` is `raw / 10^scale` (raw itself when
+`scale` is 0). A point is Telemetry when the specification gives it a `unit`,
+it is not one of the Device's functions, and it is not calibration:
+`voltage_coe`, `electric_coe`, `power_coe` and `electricity_coe`. Those four
+are reported under `calibration`, raw values, never as readings.
+
+A protected Device is refused by `on`/`off`/`set` with exit 6 before any
+command is sent; `get` still works. An offline Device fails every command
+with exit 4. If the session is dead (`sign invalid` or `1010`), exit 5 names
+the Tuya Backend. A transient `1108` is retried up to twice inside the one
+serialised client; anything else is exit 7.
 
 ## The database
 
