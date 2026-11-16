@@ -176,9 +176,15 @@ serialised client; anything else is exit 7.
 ## The database
 
 One file, path from `--db` or `HOME_DB`, default
-`$XDG_DATA_HOME/home/home.sqlite`. It is the key to the whole home: created
-owner-only (mode 600), versioned migrations, no application-level encryption.
-Keep it out of the repo and back it up deliberately.
+`$XDG_DATA_HOME/home/home.sqlite`. It is the key to the whole home and the
+Google account: losing it leaks the Google master token (equivalent to the
+account password) and the Tuya sessions, and restoring it onto a new machine
+restores both. Created owner-only (mode 600), versioned migrations, no
+application-level encryption. Keep it out of the repo and back it up
+deliberately.
+
+Reach the panel from outside your house through Tailscale. The panel has no
+other remote access path and must never be exposed to the public internet.
 
 ## Exit codes
 
@@ -201,3 +207,70 @@ account-token endpoint), `HOME_TUYA_LOGIN_URL` (QR login base),
 `HOME_TUYA_ENDPOINT` (regional API base; a loopback host is accepted for
 tests), `HOME_TUYA_USER_CODE`, `HOME_TUYA_POLL_MS` and
 `HOME_TUYA_POLL_ATTEMPTS` (QR poll interval and count).
+
+## Web Panel (`home serve`)
+
+`home serve` binds `HOME_HOST`/`HOME_PORT` (or `--host`/`--port`) and refuses
+to start without a password (`HOME_PASSWORD`, `--password`, or
+`HOME_PASSWORD_FILE`/`--password-file`, preferred for Docker because argv is
+visible to other processes). It serves the panel at `/`, the login form at
+`/login` (POST sets an `HttpOnly; SameSite=Lax` `home_session` cookie; add
+`--secure-cookie` or set `HOME_COOKIE_SECURE` when the panel sits behind an
+HTTPS reverse proxy so the cookie carries `Secure`), and a JSON API under
+`/api/`. Unauthenticated API requests return 401 JSON (`unauthorized`); a
+wrong password POST returns 401. `GET /api/devices` returns both Backends
+side by side, so one dead Backend does not hide the other; `GET /api/health`
+and `GET /api/status` report panel health. A background ticker refreshes the
+Tuya token before expiry and persists the rotated refresh token first, so the
+session stays alive without waiting for a request.
+
+The panel calls the same command layer as the CLI and keeps the CLI safety
+rules. A protected Device shows a visible `protected` label (text, not color
+alone) and no on/off control, and its write endpoints return exit code 6.
+Unlocking a lock or disarming an alarm asks for the same explicit
+confirmation as the CLI.
+
+| CLI exit code | HTTP status | Meaning |
+|---|---|---|
+| 0 | 200 | ok |
+| 2 | 400 | usage |
+| 3 | 409 | ambiguous name |
+| 4 | 503 | device offline |
+| 5 | 424 | `reauth_required` |
+| 6 | 403 | Sensitive Action or protected Device refused |
+| 7 | 502 | upstream error |
+| not authenticated | 401 | `unauthorized` |
+
+Without a session, every `/api/` request returns 401 before any of the above
+is reached.
+
+## Docker
+
+One image holds the `home` binary. The SQLite file lives on a mounted
+volume, never baked into the image, and the container runs as the
+non-root `home` user (UID 10001). Build both architectures with
+`docker buildx`:
+
+```console
+docker buildx build --platform linux/amd64,linux/arm64 -t home:latest .
+```
+
+Run the panel with the data directory on a volume and the password in a
+secret file (or `HOME_PASSWORD`):
+
+```console
+docker run -d --name home -p 8080:8080 \
+  -v home-data:/data \
+  -e HOME_PASSWORD_FILE=/run/secrets/home-password \
+  --secret home-password \
+  --restart unless-stopped home:latest
+```
+
+The runtime image sets `HOME_DB=/data/home.sqlite`, `HOME_HOST=0.0.0.0` and
+`HOME_PORT=8080`, so no other configuration is needed.
+
+Before the first write on any new database, re-add the protection:
+`home protect gh:<id>` and `home protect tuya:<id>` for every protected
+Device, or copy an existing `home.sqlite` (where the protection already
+lives on both Backends) into the volume instead. A fresh volume holds an
+empty database with nothing protected.

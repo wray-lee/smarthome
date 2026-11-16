@@ -215,6 +215,36 @@ impl<'a> TuyaClient<'a> {
         session.expire_time > 0 && now_unix() + 60 >= session.expire_time
     }
 
+    /// The stored access-token expiry, in Unix seconds.
+    pub fn expires_at(&self) -> i64 {
+        self.lock().expire_time
+    }
+
+    /// Seconds from now until the access token expires (may be negative).
+    pub fn secs_until_expiry(&self) -> i64 {
+        let expire = self.expires_at();
+        if expire <= 0 {
+            return 0;
+        }
+        expire - now_unix()
+    }
+
+    /// The active refresh: rotate the tokens now, whether or not a `call`
+    /// is in flight. This is the entry point the background task uses; it
+    /// is the same serialised, persist-first [`TuyaClient::refresh`] that
+    /// [`TuyaClient::call`] uses, separated out so a caller can refresh
+    /// without making any other request.
+    ///
+    /// Returns `true` when a refresh happened, `false` when the stored
+    /// token was still fresh.
+    pub fn refresh_if_needed(&self) -> Result<bool, Failure> {
+        if !self.needs_refresh() {
+            return Ok(false);
+        }
+        self.refresh()?;
+        Ok(true)
+    }
+
     /// One signed request, then the unsealed `result`.
     ///
     /// If the access token is about to expire the session is refreshed first;

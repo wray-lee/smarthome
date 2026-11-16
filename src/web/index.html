@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Devices | home</title>
+<style>
+:root{color-scheme:light dark;--fg:#111418;--muted:#3d4754;--bg:#ffffff;--card:#f4f6f8;--line:#767676;--accent:#0b57d0;--accent-fg:#ffffff;--ok:#0e6b2e;--warn-bg:#fdf0d5;--warn-fg:#1a1a1a;--err-bg:#fdecea;--err-fg:#1a1a1a;--focus:#0b57d0;--radius:8px}
+@media (prefers-color-scheme:dark){:root{--fg:#eceff3;--muted:#c3ccd7;--bg:#15181c;--card:#1e2329;--line:#9aa7b8;--accent:#7ab5ff;--accent-fg:#0a1f3f;--ok:#7ce2a3;--warn-bg:#3a2d10;--warn-fg:#ffe9b0;--err-bg:#3d1616;--err-fg:#ffb4b4;--focus:#7ab5ff}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding:0 1rem 3rem}
+.wrap{max-width:52rem;margin-inline:auto}
+header{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem 0;border-bottom:1px solid var(--line)}
+h1{font-size:1.5rem;margin:0;margin-inline-end:auto}
+button{font:inherit;min-height:48px;min-width:48px;padding:.625rem 1.25rem;border:1.5px solid var(--accent);border-radius:var(--radius);background:var(--accent);color:var(--accent-fg);font-weight:700;cursor:pointer}
+button.secondary{background:var(--bg);color:var(--accent)}
+button:disabled{opacity:.6;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0}
+.banner[hidden]{display:none}
+.err-box{background:var(--err-bg);color:var(--err-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0}
+.empty-box{border:1px dashed var(--line);border-radius:var(--radius);padding:1.25rem;margin:1rem 0;color:var(--muted)}
+#status-msg{color:var(--muted)}
+ul.devices{list-style:none;margin:1rem 0;padding:0;display:grid;gap:.75rem;grid-template-columns:1fr}
+@media (min-width:40rem){ul.devices{grid-template-columns:1fr 1fr}}
+li.device{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:.375rem}
+.name{font-weight:700;font-size:1.0625rem}
+.meta{color:var(--muted);font-size:.9375rem}
+.badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-block:.25rem}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:var(--radius);padding:.125rem .5rem;font-size:.875rem;font-weight:600}
+.badge.ok{color:var(--ok)}
+.state{font-weight:600}
+.controls{margin-top:auto;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+dialog:modal{overscroll-behavior:contain;max-width:min(28rem,92vw);border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--fg);padding:1.5rem}
+dialog::backdrop{overflow:hidden;overscroll-behavior:contain;background:rgb(0 0 0 / .55)}
+dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem;flex-wrap:wrap}
+.visually-hidden{position:absolute !important;clip-path:inset(50%) !important;overflow:hidden !important;width:1px !important;height:1px !important;margin:-1px !important;padding:0 !important;border:0 !important;white-space:nowrap !important}
+@media (max-width:22.5rem){body{padding:0 .75rem 3rem}header{gap:.5rem}button{padding:.625rem 1rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>home</h1>
+<button type="button" id="refresh">Refresh</button>
+<button type="button" id="signout" class="secondary">Sign out</button>
+</header>
+<main>
+<p class="banner" id="backend-banner" aria-live="polite" hidden></p>
+<p id="status-msg" role="status" aria-live="polite"></p>
+<section aria-labelledby="list-heading">
+<h2 id="list-heading" style="font-size:1.25rem">Devices</h2>
+<div id="list-slot"></div>
+</section>
+</main>
+</div>
+<dialog id="confirm-dialog" aria-labelledby="confirm-title">
+<h2 id="confirm-title" style="margin:0 0 .5rem;font-size:1.125rem">Confirm</h2>
+<p id="confirm-text"></p>
+<div class="actions">
+<button type="button" id="confirm-cancel" class="secondary" autofocus>Cancel</button>
+<button type="button" id="confirm-ok">Confirm</button>
+</div>
+</dialog>
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var dialog=$("confirm-dialog");
+var pending=null;
+function confirmed(cb){pending=cb;$("confirm-ok").textContent="Confirm";dialog.showModal();}
+dialog.addEventListener("cancel",function(){pending=null;});
+dialog.addEventListener("close",function(){pending=null;});
+$("confirm-cancel").addEventListener("click",function(){dialog.close();});
+$("confirm-ok").addEventListener("click",function(){var cb=pending;pending=null;dialog.close();if(cb)cb();});
+function rowsFor(devices,data){
+  var protectedList=(data&&data.protected)||[];
+  var list=[];
+  (devices.google_home||[]).forEach(function(d){
+    var key=(d.backend||"google_home")+":"+d.id;
+    var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
+    list.push({backend:"google_home",label:"Google Home",id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind});
+  });
+  (devices.tuya||[]).forEach(function(d){
+    var key=(d.backend||"tuya")+":"+d.id;
+    var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
+    list.push({backend:"tuya",label:"Tuya",id:d.id,name:d.name,room:null,traits:[],isProtected:isP,online:d.online,category:d.category});
+  });
+  return list;
+}
+function renderRows(rows){
+  var slot=$("list-slot");
+  slot.textContent="";
+  if(!rows.length){
+    var box=document.createElement("div");
+    box.className="empty-box";
+    box.textContent="No devices found. Check that both backends are logged in.";
+    slot.appendChild(box);
+    return;
+  }
+  var ul=document.createElement("ul");
+  ul.className="devices";
+  rows.forEach(function(dev){
+    var li=document.createElement("li");
+    li.className="device";
+    var head=document.createElement("div");
+    head.className="name";
+    head.textContent=dev.name+ (dev.room?" ("+dev.room+")":"");
+    li.appendChild(head);
+    var badges=document.createElement("div");
+    badges.className="badges";
+    var b1=document.createElement("span");b1.className="badge ok";b1.textContent=dev.label;badges.appendChild(b1);
+    var b2=document.createElement("span");b2.className="badge";b2.textContent=dev.online===false?"offline":"online";badges.appendChild(b2);
+    if(dev.isProtected){var b3=document.createElement("span");b3.className="badge";b3.textContent="protected";badges.appendChild(b3);}
+    li.appendChild(badges);
+    var meta=document.createElement("p");
+    meta.className="meta";
+    meta.textContent=dev.label+" "+dev.id;
+    li.appendChild(meta);
+    var state=document.createElement("p");
+    state.className="state";
+    state.textContent="State: checking...";
+    state.dataset.device=dev.backend+":"+dev.id;
+    li.appendChild(state);
+    var controls=document.createElement("div");
+    controls.className="controls";
+    li.appendChild(controls);
+    ul.appendChild(li);
+    dev._stateEl=state;dev._controlsEl=controls;
+  });
+  slot.appendChild(ul);
+  rows.forEach(function(dev){fetchState(dev);});
+}
+function errText(j){return (j&&j.error&&j.error.message)||("Request failed");}
+
+function fetchState(dev){
+  var path=dev.backend==="google_home"?("/api/gh/get?device="+encodeURIComponent(dev.id)):("/api/tuya/get?device="+encodeURIComponent(dev.id));
+  fetch(path,{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});}).then(function(pair){
+    var j=pair[1];var status=pair[0].status;
+    if(j.error){dev._stateEl.textContent="State: "+errText(j);dev._online=false;buildControl(dev,null);return;}
+    var state="State: unknown";
+    if(dev.backend==="google_home"){
+      var t=j.data.traits||{};
+      dev._online=t.deviceStatus?t.deviceStatus.online:j.data.online;
+      if(t.onOff&&typeof t.onOff.on==="boolean")state="State: "+(t.onOff.on?"on":"off");
+      else if(t.lockUnlock)state="State: "+(t.lockUnlock.isLocked?"locked":"unlocked");
+      else if(t.armDisarm)state="State: "+(t.armDisarm.isArmed?"armed":"disarmed");
+      else state="State: online";
+      dev._state=j.data;
+    }else{
+      dev._online=j.data.online;
+      var pts=j.data.data_points||[];
+      var sw=pts.filter(function(p){return p.code==="switch_1";})[0];
+      if(sw)state="State: "+(sw.value?"on":"off");
+      else state="State: online";
+      dev._state=j.data;
+    }
+    dev._stateEl.textContent=state;
+    buildControl(dev,j.data);
+  }).catch(function(e){dev._stateEl.textContent="State: "+e.message;buildControl(dev,null);});
+}
+
+function buildControl(dev,data){
+  var wrap=dev._controlsEl;wrap.textContent="";
+  if(dev.isProtected){
+    var p=document.createElement("p");p.className="meta";p.textContent="Protected. No control.";wrap.appendChild(p);return;
+  }
+  if(dev._online===false){
+    var b=document.createElement("button");b.type="button";b.textContent="Turn on";b.disabled=true;b.setAttribute("aria-disabled","true");
+    b.title="Offline";b.setAttribute("aria-label","Turn on "+dev.name+" (offline)");
+    wrap.appendChild(b);
+    var n=document.createElement("span");n.className="meta";n.textContent="Offline. Connect the device first.";wrap.appendChild(n);
+    return;
+  }
+  if(dev.backend==="google_home"){
+    var hasOnOff=(dev.traits||[]).some(function(t){return t.indexOf("OnOff")!==-1;});
+    var hasLock=(dev.traits||[]).some(function(t){return t.indexOf("LockUnlock")!==-1;});
+    var hasArm=(dev.traits||[]).some(function(t){return t.indexOf("ArmDisarm")!==-1;});
+    var isOn=null;
+    if(data&&data.traits&&data.traits.onOff) isOn=data.traits.onOff.on;
+    if(hasOnOff){
+      var onBtn=document.createElement("button");onBtn.type="button";
+      onBtn.textContent=isOn===true?"Turn off":"Turn on";
+      onBtn.setAttribute("aria-pressed",isOn===true?"true":"false");
+      onBtn.setAttribute("aria-label",(isOn===true?"Turn off ":"Turn on ")+dev.name);
+      onBtn.addEventListener("click",function(){ghSet(dev,"onOff",!(isOn===true));});
+      wrap.appendChild(onBtn);
+    }
+    if(hasLock){
+      var isLocked=data&&data.traits&&data.traits.lockUnlock?data.traits.lockUnlock.isLocked:null;
+      var lockBtn=document.createElement("button");lockBtn.type="button";lockBtn.className="secondary";
+      lockBtn.textContent=isLocked?"Unlock":"Lock";
+      lockBtn.setAttribute("aria-label",(isLocked?"Unlock ":"Lock ")+dev.name);
+      lockBtn.disabled=dev._online===false;
+      lockBtn.addEventListener("click",function(){
+        if(isLocked){
+          $("confirm-text").textContent="Unlock "+dev.name+"? This is a Sensitive Action. Confirm to send unlock.";
+          $("confirm-ok").textContent="Unlock";
+          confirmed(function(){ghSet(dev,"lockUnlock.isLocked",false,true);});
+        }else{
+          ghSet(dev,"lockUnlock.isLocked",true);
+        }
+      });
+      wrap.appendChild(lockBtn);
+    }
+    if(hasArm){
+      var isArmed=data&&data.traits&&data.traits.armDisarm?data.traits.armDisarm.isArmed:null;
+      var armBtn=document.createElement("button");armBtn.type="button";armBtn.className="secondary";
+      armBtn.textContent=isArmed?"Disarm":"Arm";
+      armBtn.setAttribute("aria-label",(isArmed?"Disarm ":"Arm ")+dev.name);
+      armBtn.disabled=dev._online===false;
+      armBtn.addEventListener("click",function(){
+        if(isArmed){
+          $("confirm-text").textContent="Disarm "+dev.name+"? This is a Sensitive Action. Confirm to send disarm.";
+          $("confirm-ok").textContent="Disarm";
+          confirmed(function(){ghSet(dev,"armDisarm.isArmed",false,true);});
+        }else{
+          ghSet(dev,"armDisarm.isArmed",true);
+        }
+      });
+      wrap.appendChild(armBtn);
+    }
+    if(!hasOnOff&&!hasLock&&!hasArm){
+      var note=document.createElement("p");note.className="meta";note.textContent="No on/off trait.";wrap.appendChild(note);
+    }
+  }else{
+    var isOnT=false;
+    if(data){var pts=data.data_points||[];var sw=pts.filter(function(p){return p.code==="switch_1";})[0];isOnT=sw?!!sw.value:false;}
+    var tBtn=document.createElement("button");tBtn.type="button";
+    tBtn.textContent=isOnT?"Turn off":"Turn on";
+    tBtn.setAttribute("aria-pressed",isOnT?"true":"false");
+    tBtn.setAttribute("aria-label",(isOnT?"Turn off ":"Turn on ")+dev.name);
+    tBtn.disabled=dev._online===false;
+    tBtn.addEventListener("click",function(){tuyaSet(dev,!isOnT);});
+    wrap.appendChild(tBtn);
+  }
+}
+
+function ghSet(dev,trait,val,confirm){
+  var body=new URLSearchParams({device:dev.id,trait:trait,value:String(val)});
+  if(confirm)body.set("confirm","true");
+  dev._stateEl.textContent="Sending...";
+  fetch("/api/gh/set",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
+  .then(function(r){return r.json();}).then(function(j){
+    if(j.error){dev._stateEl.textContent="Error: "+errText(j);return;}
+    fetchState(dev);
+  }).catch(function(e){dev._stateEl.textContent="Error: "+e.message;});
+}
+function tuyaSet(dev,onVal){
+  dev._stateEl.textContent="Sending...";
+  var path=onVal?"/api/tuya/on":"/api/tuya/off";
+  fetch(path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({device:dev.id}).toString()})
+  .then(function(r){return r.json();}).then(function(j){
+    if(j.error){dev._stateEl.textContent="Error: "+errText(j);return;}
+    fetchState(dev);
+  }).catch(function(e){dev._stateEl.textContent="Error: "+e.message;});
+}
+
+function bannerFor(data,statusData){
+  var parts=[];
+  var tuyaStatus=statusData&&statusData.tuya&&statusData.tuya.status;
+  if(tuyaStatus==="reauth_required"){
+    var msg=(statusData.tuya.message||"reauth_required");
+    parts.push("Tuya: reauth_required. "+msg+". Run home tuya login.");
+  }
+  ["google_home","tuya"].forEach(function(b){
+    var e=data[b+"_error"];
+    if(e&&e.error){
+      var code=e.error.code||"";
+      var name=b==="google_home"?"Google Home":"Tuya";
+      var cmd=b==="google_home"?"Run home gh login":"Run home tuya login";
+      parts.push(name+": "+code+". "+cmd+".");
+    }
+  });
+  var banner=$("backend-banner");
+  if(parts.length){banner.textContent=parts.join(" ");banner.hidden=false;}
+  else{banner.textContent="";banner.hidden=true;}
+}
+
+function load(){
+  var msg=$("status-msg");
+  msg.textContent="Loading devices...";
+  var devicesPromise=fetch("/api/devices",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
+  var statusPromise=fetch("/api/status",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
+  Promise.all([devicesPromise,statusPromise]).then(function(pair){
+    var rJ=pair[0];var sJ=pair[1];
+    if(rJ[0].status===401||sJ[0].status===401){location.href="/login";return;}
+    var j=rJ[1];var sj=sJ[1];
+    if(j.error){showError(errText(j));return;}
+    var data=j.data||{};
+    var statusData=sj&&sj.data?sj.data:null;
+    bannerFor(data,statusData);
+    if(data.google_home_error||data.tuya_error){
+      if(!data.google_home&&!data.tuya){showError(data.google_home_error?errText(data.google_home_error):errText(data.tuya_error));return;}
+    }
+    msg.textContent="Updated.";
+    renderRows(rowsFor(data,data));
+  }).catch(function(e){showError(e.message);});
+}
+function showError(text){
+  var slot=$("list-slot");slot.textContent="";
+  var box=document.createElement("div");box.className="err-box";box.setAttribute("role","alert");
+  box.textContent="Error: "+text;
+  var btn=document.createElement("button");btn.type="button";btn.textContent="Retry";
+  btn.style.marginTop="1rem";
+  btn.addEventListener("click",load);
+  box.appendChild(document.createElement("br"));
+  box.appendChild(btn);
+  slot.appendChild(box);
+  $("status-msg").textContent="";
+}
+$("refresh").addEventListener("click",load);
+$("signout").addEventListener("click",function(){
+  fetch("/logout",{method:"POST"}).then(function(){location.href="/login";}).catch(function(){location.href="/login";});
+});
+setInterval(function(){if(!document.hidden)load();},10000);
+load();
+</script>
+</body>
+</html>

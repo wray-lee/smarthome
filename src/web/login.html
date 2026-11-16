@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in | home</title>
+<style>
+:root{color-scheme:light dark;--fg:#111418;--muted:#3d4754;--bg:#ffffff;--card:#f4f6f8;--line:#767676;--accent:#0b57d0;--accent-fg:#ffffff;--alert-bg:#fdf0d5;--alert-fg:#1a1a1a;--focus:#0b57d0;--radius:8px}
+@media (prefers-color-scheme:dark){:root{--fg:#eceff3;--muted:#c3ccd7;--bg:#15181c;--card:#1e2329;--line:#9aa7b8;--accent:#7ab5ff;--accent-fg:#0a1f3f;--alert-bg:#3a2d10;--alert-fg:#ffe9b0;--focus:#7ab5ff}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding:1.5rem;max-width:28rem;margin-inline:auto}
+h1{font-size:1.5rem;margin:0 0 1rem}
+form{display:flex;flex-direction:column;gap:.25rem;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.25rem}
+label{font-weight:600}
+input[type="password"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.75rem;border:1.5px solid var(--line);border-radius:var(--radius);color:var(--fg);background:var(--bg);width:100%}
+button[type="submit"]{font:inherit;min-height:48px;margin-top:.75rem;padding:.75rem 1.25rem;border:1.5px solid var(--accent);border-radius:var(--radius);background:var(--accent);color:var(--accent-fg);font-weight:700;cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+[role="alert"]{background:var(--alert-bg);color:var(--alert-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:.75rem 0}
+dialog:modal{overscroll-behavior:contain}
+dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
+@media (max-width:320px){body{padding:1rem}}
+</style>
+</head>
+<body>
+<h1>home</h1>
+<main>
+<form method="post" action="/login" aria-labelledby="signin-title">
+<h2 id="signin-title" style="font-size:1.125rem;margin:0 0 .5rem">Sign in</h2>
+<div id="server-err"></div>
+<label for="pw">Password</label>
+<input id="pw" name="password" type="password" autocomplete="current-password" required enterkeyhint="go">
+<button type="submit">Sign in</button>
+</form>
+</main>
+<script>
+(function(){
+  var m=/[?&]error=([^&#]*)/.exec(location.search);
+  var slot=document.getElementById("server-err");
+  if(m){
+    var p=document.createElement("p");
+    p.setAttribute("role","alert");
+    p.textContent=decodeURIComponent(m[1].replace(/\+/g," "));
+    slot.appendChild(p);
+    document.getElementById("pw").setAttribute("aria-invalid","true");
+  }
+})();
+</script>
+</body>
+</html>
