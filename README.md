@@ -275,7 +275,9 @@ For tests: `HOME_FOYER_URL` (foyer RPC prefix), `HOME_GPSOAUTH_URL` (Android
 account-token endpoint), `HOME_TUYA_LOGIN_URL` (QR login base),
 `HOME_TUYA_ENDPOINT` (regional API base; a loopback host is accepted for
 tests), `HOME_TUYA_USER_CODE`, `HOME_TUYA_POLL_MS` and
-`HOME_TUYA_POLL_ATTEMPTS` (QR poll interval and count).
+`HOME_TUYA_POLL_ATTEMPTS` (QR poll interval and count),
+`HOME_TUYA_REFRESH_POLL_MS` (the `home serve` background Tuya refresh tick,
+default 10000 ms, minimum 20).
 
 ## Web Panel (`home serve`)
 
@@ -294,6 +296,8 @@ and `GET /api/status` report panel health. A background ticker refreshes the
 Tuya token before expiry and persists the rotated refresh token first, so the
 session stays alive without waiting for a request.
 
+Login failures have no failed-login throttling and no lockout, so the panel
+must stay on loopback behind Tailscale and never be exposed directly.
 Session ids are 32 bytes from the OS CSPRNG, and both the cookie and the
 in-memory session expire after 8 hours; signing out deletes the id. Every
 response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
