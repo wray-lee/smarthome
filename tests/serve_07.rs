@@ -183,8 +183,7 @@ impl Drop for Serve {
 // --- fixtures ------------------------------------------------------------
 
 const HOMES: &str = include_str!("../.scratch/smarthome-v1/fixtures/tuya/homes.json");
-const HOME_DEVICES: &str =
-    include_str!("../.scratch/smarthome-v1/fixtures/tuya/home-devices.json");
+const HOME_DEVICES: &str = include_str!("../.scratch/smarthome-v1/fixtures/tuya/home-devices.json");
 const SPEC_1: &str = include_str!("../.scratch/smarthome-v1/fixtures/tuya/spec-1.json");
 const DETAIL_FALSE: &str =
     include_str!("../.scratch/smarthome-v1/fixtures/tuya/detail-after-false.json");
@@ -278,7 +277,9 @@ async fn mount_tuya_detail_spec(api: &MockServer, id: &str) {
 async fn mount_tuya_command(api: &MockServer, id: &str) {
     Mock::given(method("POST"))
         .and(path(format!("/v1.1/m/thing/{id}/commands")))
-        .respond_with(envelope(json!({"t": now_ms(), "success": true, "result": true})))
+        .respond_with(envelope(
+            json!({"t": now_ms(), "success": true, "result": true}),
+        ))
         .mount(api)
         .await;
 }
@@ -304,16 +305,29 @@ fn gh_graph() -> Value {
     json!([
         "<num>",
         [[
-            "home-1", "home", [], [], null,
+            "home-1",
+            "home",
+            [],
+            [],
+            null,
             [[
-                "room-Den", null, "Den", ["OTHER"],
+                "room-Den",
+                null,
+                "Den",
+                ["OTHER"],
                 [[[GH_LAMP, ["tuya-smart-cee31", format!("{GH_LAMP}_all")]]]]
             ]],
             [[
                 [GH_LAMP, ["tuya-smart-cee31", "homePartner_all"]],
-                null, null, "Lamp", null,
+                null,
+                null,
+                "Lamp",
+                null,
                 "action.devices.types.LIGHT",
-                ["action.devices.traits.OnOff", "action.devices.traits.Brightness"]
+                [
+                    "action.devices.traits.OnOff",
+                    "action.devices.traits.Brightness"
+                ]
             ]]
         ]]
     ])
@@ -324,11 +338,14 @@ fn gh_bool(v: bool) -> Value {
 }
 
 fn gh_state() -> Value {
-    json!([[GH_LAMP], [
-        ["deviceStatus", [["online", [null, null, null, 1]]]],
-        ["onOff", [["onOff", gh_bool(true)]]],
-        ["brightness", [["brightness", [null, 40]]]]
-    ]])
+    json!([
+        [GH_LAMP],
+        [
+            ["deviceStatus", [["online", [null, null, null, 1]]]],
+            ["onOff", [["onOff", gh_bool(true)]]],
+            ["brightness", [["brightness", [null, 40]]]]
+        ]
+    ])
 }
 
 fn gh_states() -> Value {
@@ -363,7 +380,9 @@ fn seed_gh(db: &Path) {
         "bearer": "dummy-bearer-fresh",
         "bearer_expires_at": now + 3600,
     });
-    store.set_credential("google_home", &cred.to_string()).unwrap();
+    store
+        .set_credential("google_home", &cred.to_string())
+        .unwrap();
 }
 
 fn seed_tuya(db: &Path, endpoint: &str, offset: i64) {
@@ -429,7 +448,12 @@ async fn qr_login_start_poll_persist_and_status_reset() {
     assert_eq!(sj["data"]["tuya_user_code_configured"], false);
 
     // start with form user_code
-    let (st, j) = post_form(port, "/api/tuya/login/start", "user_code=DummyCode1", &cookie);
+    let (st, j) = post_form(
+        port,
+        "/api/tuya/login/start",
+        "user_code=DummyCode1",
+        &cookie,
+    );
     assert_eq!(st, 200, "{j}");
     let token = j["data"]["token"].as_str().unwrap();
     assert_eq!(token, QR_TOKEN);
@@ -439,19 +463,32 @@ async fn qr_login_start_poll_persist_and_status_reset() {
     assert!(!svg.contains("dummy-access-1"));
 
     // first poll -> pending
-    let (st, j) = post_form(port, "/api/tuya/login/poll", &format!("token={token}"), &cookie);
+    let (st, j) = post_form(
+        port,
+        "/api/tuya/login/poll",
+        &format!("token={token}"),
+        &cookie,
+    );
     assert_eq!(st, 200, "{j}");
     assert_eq!(j["data"]["status"], "pending");
 
     // second poll -> authenticated, session persisted
-    let (st, j) = post_form(port, "/api/tuya/login/poll", &format!("token={token}"), &cookie);
+    let (st, j) = post_form(
+        port,
+        "/api/tuya/login/poll",
+        &format!("token={token}"),
+        &cookie,
+    );
     assert_eq!(st, 200, "{j}");
     assert_eq!(j["data"]["status"], "authenticated");
     assert_eq!(j["data"]["backend"], "tuya");
     assert_eq!(j["data"]["uid"], "dummy-uid-1");
 
     let store = home_store::Store::open(&db).unwrap();
-    let raw = store.credential("tuya").unwrap().expect("tuya session after poll");
+    let raw = store
+        .credential("tuya")
+        .unwrap()
+        .expect("tuya session after poll");
     let sess: Value = serde_json::from_str(&raw).unwrap();
     assert_eq!(sess["access_token"], "dummy-access-1");
     assert_eq!(sess["refresh_token"], "dummy-refresh-1");
@@ -557,8 +594,14 @@ async fn protected_devices_403_zero_requests_on_writes() {
     let (_dir, db) = temp_db();
     seed_gh(&db);
     let pid = tuya_home_id();
-    home_store::Store::open(&db).unwrap().protect("google_home", GH_LAMP).unwrap();
-    home_store::Store::open(&db).unwrap().protect("tuya", &pid).unwrap();
+    home_store::Store::open(&db)
+        .unwrap()
+        .protect("google_home", GH_LAMP)
+        .unwrap();
+    home_store::Store::open(&db)
+        .unwrap()
+        .protect("tuya", &pid)
+        .unwrap();
 
     let foyer = MockServer::start().await;
     mount_foyer(&foyer).await;
@@ -612,16 +655,39 @@ fn index_smoke_landmarks_and_controls() {
     let ct = header(&headers, "content-type").unwrap_or("");
     assert!(ct.contains("text/html"), "{ct}");
     for needle in [
-        "<header", "<main", "aria-live=\"polite\"", "<dialog", "Sign out", "Refresh",
-        "/api/devices", "/api/status", "/api/gh/get", "/api/gh/set", "/api/tuya/get",
-        "/api/tuya/on", "/api/tuya/off", "/api/tuya/login/start", "/api/tuya/login/poll",
-        "protected", "backend-banner", "Loading devices...", "Loading state...",
-        "Loading telemetry...", "No telemetry readings reported.", "No devices found",
-        "Syncing...", "Telemetry", "Sign in to Tuya (QR)", "User code",
+        "<header",
+        "<main",
+        "aria-live=\"polite\"",
+        "<dialog",
+        "Sign out",
+        "Refresh",
+        "/api/devices",
+        "/api/status",
+        "/api/gh/get",
+        "/api/gh/set",
+        "/api/tuya/get",
+        "/api/tuya/on",
+        "/api/tuya/off",
+        "/api/tuya/login/start",
+        "/api/tuya/login/poll",
+        "protected",
+        "backend-banner",
+        "Loading devices...",
+        "Loading state...",
+        "Loading telemetry...",
+        "No telemetry readings reported.",
+        "No devices found",
+        "Syncing...",
+        "Telemetry",
+        "Sign in to Tuya (QR)",
+        "User code",
     ] {
         assert!(body.contains(needle), "index missing {needle:?}");
     }
-    assert!(!body.contains(char::from_u32(0x2014).unwrap()), "no em dash");
+    assert!(
+        !body.contains(char::from_u32(0x2014).unwrap()),
+        "no em dash"
+    );
 }
 
 /// Smoke: login page contract strings.
@@ -630,12 +696,17 @@ fn login_page_smoke() {
     let (_dir, db) = temp_db();
     let port = free_port();
     let _s = spawn_env(&db, port, &[]);
-    let req =
-        "GET /login HTTP/1.1\r\nHost: x\r\nAccept: text/html\r\nConnection: close\r\n\r\n";
+    let req = "GET /login HTTP/1.1\r\nHost: x\r\nAccept: text/html\r\nConnection: close\r\n\r\n";
     let (status, headers, body) = http_full(port, req);
     assert_eq!(status, 200);
-    assert!(header(&headers, "content-type").unwrap_or("").contains("text/html"));
-    for needle in ["action=\"/login\"", "<label for=\"pw\">Password</label>", "role=\"alert\""] {
+    assert!(header(&headers, "content-type")
+        .unwrap_or("")
+        .contains("text/html"));
+    for needle in [
+        "action=\"/login\"",
+        "<label for=\"pw\">Password</label>",
+        "role=\"alert\"",
+    ] {
         assert!(body.contains(needle), "login missing {needle:?}");
     }
 }

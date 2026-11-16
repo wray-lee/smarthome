@@ -83,7 +83,9 @@ pub fn qr_svg(text: &str) -> Result<String, Failure> {
     let side = modules.saturating_add(QUIET * 2);
     // Empty text yields no modules; refuse rather than emit a blank image.
     if modules == 0 {
-        return Err(Failure::upstream("could not build the QR code: empty content"));
+        return Err(Failure::upstream(
+            "could not build the QR code: empty content",
+        ));
     }
     let mut d = String::new();
     let colors = code.to_colors();
@@ -303,7 +305,10 @@ mod tests {
     fn the_qr_renders_as_inline_svg_without_scripts() {
         let svg = qr_svg(&qr_payload("abc123")).unwrap();
         assert!(svg.starts_with("<svg"), "{svg}");
-        assert!(svg.contains("xmlns=\"http://www.w3.org/2000/svg\""), "{svg}");
+        assert!(
+            svg.contains("xmlns=\"http://www.w3.org/2000/svg\""),
+            "{svg}"
+        );
         assert!(svg.contains("viewBox="), "{svg}");
         assert!(svg.contains("shape-rendering=\"crispEdges\""), "{svg}");
         assert!(svg.contains("role=\"img\""), "{svg}");

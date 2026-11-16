@@ -1001,8 +1001,7 @@ fn api_tuya_login_start(
             Exit::Usage,
         ));
     };
-    let pending = tuya_backend::start_login(&cfg, &user_code)
-        .map_err(|f| (f.body, f.exit))?;
+    let pending = tuya_backend::start_login(&cfg, &user_code).map_err(|f| (f.body, f.exit))?;
     let svg = tuya_backend::qr_svg(&pending.qr_text).map_err(|f| (f.body, f.exit))?;
     let normalized = tuya_backend::login::normalize_code(&user_code);
     if let Ok(mut map) = state.pending_tuya_qr.lock() {
@@ -1027,10 +1026,7 @@ fn api_tuya_login_poll(
 ) -> Result<serde_json::Value, (ErrorBody, Exit)> {
     let token = token.trim().to_string();
     if token.is_empty() {
-        return Err((
-            ErrorBody::usage("token is required"),
-            Exit::Usage,
-        ));
+        return Err((ErrorBody::usage("token is required"), Exit::Usage));
     }
     let cfg = tuya_backend::Config::from_env();
     let store = state.store.lock().map_err(|_| {
@@ -1082,12 +1078,9 @@ fn api_tuya_login_poll(
             }
             // Same best-effort backup as the CLI login: a failure here is
             // reported on stderr and never undoes a completed sign-in.
-            if let Err(failure) = tuya_backend::TuyaClient::with_session(
-                session.clone(),
-                &cfg,
-                &store,
-            )
-            .and_then(|client| tuya_backend::devices::list_devices(&client))
+            if let Err(failure) =
+                tuya_backend::TuyaClient::with_session(session.clone(), &cfg, &store)
+                    .and_then(|client| tuya_backend::devices::list_devices(&client))
             {
                 eprintln!(
                     "signed in, but fetching Local Keys failed: {}",
