@@ -57,6 +57,72 @@ dependencies (`cargo vendor`) or pre-fill WSL's own registry cache while the
 machine still has a network; until then, those `CARGO_HOME`/`CARGO_TARGET_DIR`
 exports are a prerequisite, not a convenience.
 
+## Deploy
+
+Two ways to run it: the binary on a Linux host, or the container below. Both
+serve the same panel and keep everything in one SQLite file.
+
+### Binary
+
+The release build is a single dynamically linked Linux binary (glibc, as the
+build host provides). Copy it over, then give it a data directory and a
+password file only its user can read:
+
+```console
+install -Dm755 home /usr/local/bin/home
+sudo install -d -m700 -o "$USER" /var/lib/home
+install -m600 /dev/stdin /var/lib/home/password <<< 'a long password'
+```
+
+Sign both Backends in once, in this order (the password file is read per
+process, so the CLI and `serve` share the same database):
+
+```console
+home --db /var/lib/home/home.sqlite tuya login      # QR code, then scan it
+echo 'aas_et/…' | home --db /var/lib/home/home.sqlite gh login --email you@example.com
+home --db /var/lib/home/home.sqlite protect tuya:<id>   # every Device that must stay read-only
+```
+
+Then run the panel under your init system, with the password from the file so
+it never shows in `ps`:
+
+```console
+HOME_DB=/var/lib/home/home.sqlite \
+HOME_HOST=127.0.0.1 HOME_PORT=8080 \
+HOME_PASSWORD_FILE=/var/lib/home/password \
+home serve
+```
+
+Keep `HOME_HOST` on the loopback and reach the panel through Tailscale (or
+another private network). It is plain HTTP with a password: do not expose it
+to the internet, and if you do put HTTPS in front of it, add
+`HOME_COOKIE_SECURE=true` so the session cookie carries `Secure`.
+
+Check it answers before you walk away:
+
+```console
+curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/login   # 200
+```
+
+The whole `/api/` tree, `/api/health` included, is behind the password, so a
+401 there means "still signed in nowhere", not "down": `GET /login` is the
+unauthenticated liveness check.
+
+### Upgrade
+
+Stop the old process, replace the binary, start it again. The database is
+migrated forward on open (`PRAGMA user_version`, currently 2), and a newer
+database is refused by an older binary rather than half-read, so back it up
+before the first start of a new version:
+
+```console
+sqlite3 /var/lib/home/home.sqlite ".backup '/var/backups/home-$(date +%F).sqlite'"
+```
+
+`home tuya keys > tuya-keys.json` keeps the Local Keys outside the database
+as the Vendor Exit backup; the Google master token and Tuya sessions live
+only in the database.
+
 ## Sign in and list Devices
 
 The credential is the Google master token (equivalent to the account
@@ -213,7 +279,8 @@ tests), `HOME_TUYA_USER_CODE`, `HOME_TUYA_POLL_MS` and
 `home serve` binds `HOME_HOST`/`HOME_PORT` (or `--host`/`--port`) and refuses
 to start without a password (`HOME_PASSWORD`, `--password`, or
 `HOME_PASSWORD_FILE`/`--password-file`, preferred for Docker because argv is
-visible to other processes). It serves the panel at `/`, the login form at
+visible to other processes; the file's trailing newline is trimmed). It
+serves the panel at `/`, the login form at
 `/login` (POST sets an `HttpOnly; SameSite=Strict` `home_session` cookie; add
 `--secure-cookie` or set `HOME_COOKIE_SECURE` when the panel sits behind an
 HTTPS reverse proxy so the cookie carries `Secure`), and a JSON API under
@@ -223,6 +290,17 @@ side by side, so one dead Backend does not hide the other; `GET /api/health`
 and `GET /api/status` report panel health. A background ticker refreshes the
 Tuya token before expiry and persists the rotated refresh token first, so the
 session stays alive without waiting for a request.
+
+Session ids are 32 bytes from the OS CSPRNG, and both the cookie and the
+in-memory session expire after 8 hours; signing out deletes the id. Every
+response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+`frame-ancestors 'none'`, `Referrer-Policy: no-referrer` and
+`Cache-Control: no-store`. The password check compares in constant time and
+folds the length in. The panel renders every server value as text; the one
+`innerHTML` is the Tuya QR SVG, whose markup the server builds itself from
+the QR encoder (coordinates only, no request text). There is no CSRF token;
+`SameSite=Strict` is what keeps a foreign page from driving a POST, which is
+why the cookie must never be relaxed.
 
 The panel calls the same command layer as the CLI and keeps the CLI safety
 rules. A protected Device shows a visible `protected` label (text, not color
@@ -256,18 +334,31 @@ docker buildx build --platform linux/amd64,linux/arm64 -t home:latest .
 ```
 
 Run the panel with the data directory on a volume and the password in a
-secret file (or `HOME_PASSWORD`):
+file on that volume, owner `10001` (or `HOME_PASSWORD`):
 
 ```console
 docker run -d --name home -p 8080:8080 \
   -v home-data:/data \
-  -e HOME_PASSWORD_FILE=/run/secrets/home-password \
-  --secret home-password \
+  -e HOME_PASSWORD_FILE=/data/home-password \
   --restart unless-stopped home:latest
 ```
 
+`docker run` here takes no `--secret`; a bind-mounted host file also works
+(`--mount type=bind,src=/path/home-password,dst=/run/secrets/home-password,readonly`
+plus `-e HOME_PASSWORD_FILE=/run/secrets/home-password`) as long as UID 10001
+can read it. Either way the password never lands in argv or the image.
+
 The runtime image sets `HOME_DB=/data/home.sqlite`, `HOME_HOST=0.0.0.0` and
-`HOME_PORT=8080`, so no other configuration is needed.
+`HOME_PORT=8080`, so no other configuration is needed. Only publish the port
+where you want the panel reachable: `-p 127.0.0.1:8080:8080` binds the loopback
+instead of every interface.
+
+The Google Home sign-in needs stdin, which has no browser inside the
+container, so run it through the running container (or `--entrypoint`):
+
+```console
+echo 'aas_et/…' | docker exec -i home home gh login --email you@example.com
+```
 
 Before the first write on any new database, re-add the protection:
 `home protect gh:<id>` and `home protect tuya:<id>` for every protected

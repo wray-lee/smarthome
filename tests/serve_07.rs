@@ -710,3 +710,51 @@ fn login_page_smoke() {
         assert!(body.contains(needle), "login missing {needle:?}");
     }
 }
+
+/// Every answer carries the hardening headers, and a stale or forged session
+/// id is 401 even for a page path.
+#[test]
+fn responses_carry_security_headers_and_only_live_sessions_pass() {
+    let (_dir, db) = temp_db();
+    let port = free_port();
+    let _s = spawn_env(&db, port, &[]);
+    let cookie = login_cookie(port);
+    assert_eq!(cookie.split('=').count(), 2, "one cookie pair: {cookie}");
+    let id = cookie.split_once('=').map(|(_, v)| v).unwrap_or("");
+    assert_eq!(id.len(), 64, "32 random bytes as hex: {id}");
+
+    for target in ["/login", "/api/health", "/api/devices"] {
+        let req = format!(
+            "GET {target} HTTP/1.1\r\nHost: x\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n"
+        );
+        let (_, headers, _) = http_full(port, &req);
+        for name in [
+            "x-content-type-options",
+            "x-frame-options",
+            "content-security-policy",
+            "referrer-policy",
+            "cache-control",
+        ] {
+            assert!(header(&headers, name).is_some(), "{target} missing {name}");
+        }
+        assert_eq!(header(&headers, "x-frame-options"), Some("DENY"));
+        assert_eq!(header(&headers, "cache-control"), Some("no-store"));
+    }
+
+    // A forged id is refused, and so is the signed-out one.
+    let mut forged = cookie.clone();
+    forged.pop();
+    let req = format!(
+        "GET /api/health HTTP/1.1\r\nHost: x\r\nCookie: {forged}\r\nConnection: close\r\n\r\n"
+    );
+    let (status, _h, body) = http_full(port, &req);
+    assert_eq!(status, 401, "{body}");
+    let req = format!(
+        "POST /logout HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n"
+    );
+    assert_eq!(http_full(port, &req).0, 200);
+    let req = format!(
+        "GET /api/health HTTP/1.1\r\nHost: x\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n"
+    );
+    assert_eq!(http_full(port, &req).0, 401, "logged-out id still works");
+}

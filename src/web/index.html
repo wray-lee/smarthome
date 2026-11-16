@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>Devices | home</title>
 <style>
 :root{color-scheme:light dark;--fg:#111418;--muted:#3d4754;--bg:#ffffff;--card:#f4f6f8;--line:#767676;--accent:#0b57d0;--accent-fg:#ffffff;--ok:#0e6b2e;--warn-bg:#fdf0d5;--warn-fg:#1a1a1a;--err-bg:#fdecea;--err-fg:#1a1a1a;--focus:#0b57d0;--radius:8px}
@@ -97,7 +98,7 @@ dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25
 </div>
 <p id="qr-status" role="status" aria-live="polite" style="margin:.75rem 0 0"></p>
 <p id="qr-err" class="err-text" role="alert" hidden></p>
-<div class="qr-box" id="qr-box" aria-label="QR code" style="margin-top:.75rem">No QR code yet.</div>
+<div class="qr-box" id="qr-box" role="img" aria-label="QR code" style="margin-top:.75rem">No QR code yet.</div>
 <div class="actions" id="qr-retry-wrap" hidden>
 <button type="button" id="qr-retry">Retry</button>
 </div>
@@ -106,8 +107,15 @@ dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25
 "use strict";
 var $=function(id){return document.getElementById(id);};
 var POLL_MS=10000;
+// Control ids are derived from the Device id and the control's position, so a
+// rebuild from unchanged state produces identical markup and is skipped.
+var uidDev=null;
 var uidSeq=0;
-function uid(prefix){uidSeq+=1;return prefix+uidSeq;}
+function uid(dev,prefix){
+  if(uidDev!==dev){uidDev=dev;uidSeq=0;}
+  uidSeq+=1;
+  return prefix+dev.id+"-"+uidSeq;
+}
 function isVisible(){return document.visibilityState==="visible"&&!document.hidden;}
 function errText(j){if(!j||!j.error)return "Request failed";var e=j.error;if(e.message)return e.message;return e.code||"Request failed";}
 function errCode(j){return (j&&j.error&&j.error.code)||"";}
@@ -135,25 +143,30 @@ function makeBtn(text,secondary,handler){
   b.addEventListener("click",handler);
   return b;
 }
-function renderTuyaReauth(){
-  var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+function tuyaReauthNodes(){
   var t=document.createElement("span");t.className="banner-text";
   t.textContent="Tuya needs you to sign in again. Open your Smart Life app on your phone, then sign in here with the QR code.";
-  b.appendChild(t);
-  b.appendChild(makeBtn("Sign in to Tuya (QR)",false,function(){openQr();}));
+  return [t,makeBtn("Sign in to Tuya (QR)",false,function(){openQr();})];
 }
-function renderGhReauth(){
-  var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+function ghReauthNodes(){
+  var nodes=[];
   var t=document.createElement("span");t.className="banner-text";
   t.textContent="Google Home needs you to sign in again in a browser to get a fresh oauth_token. This cannot be finished in this panel. Run this command, then press Refresh:";
-  b.appendChild(t);
-  var c1=document.createElement("code");c1.textContent="home gh login --email <your-email>";b.appendChild(c1);
+  nodes.push(t);
+  var c1=document.createElement("code");c1.textContent="home gh login --email <your-email>";nodes.push(c1);
   var note=document.createElement("span");note.className="banner-text";
   note.textContent="If this panel runs in a container, run: ";
-  b.appendChild(note);
-  var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";b.appendChild(c2);
-  b.appendChild(makeBtn("Refresh",true,function(){load();}));
+  nodes.push(note);
+  var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";nodes.push(c2);
+  nodes.push(makeBtn("Refresh",true,function(){load();}));
+  return nodes;
 }
+function renderBannerNodes(nodes){
+  var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+  nodes.forEach(function(n){b.appendChild(n);});
+}
+function renderTuyaReauth(){renderBannerNodes(tuyaReauthNodes());}
+function renderGhReauth(){renderBannerNodes(ghReauthNodes());}
 function renderReauthBanner(backend){
   if(backend==="tuya")renderTuyaReauth();else renderGhReauth();
 }
@@ -161,14 +174,28 @@ function bannerFor(data,statusData){
   var tuyaStatus=statusData&&statusData.tuya&&statusData.tuya.status;
   var tuyaErr=data&&data.tuya_error;
   var ghErr=data&&data.google_home_error;
-  var tuyaReauth=tuyaStatus==="reauth_required"||(tuyaErr&&tuyaErr.error&&tuyaErr.error.code==="reauth_required");
+  // /api/status is served from a cached flag that a successful device list
+  // clears, so after a QR sign-in it can still carry the old failure. When the
+  // list itself answered (tuya present) or carried its own error, that answer
+  // is the newer proof and status is ignored.
+  var tuyaReauth;
+  if(tuyaErr&&tuyaErr.error)tuyaReauth=tuyaErr.error.code==="reauth_required";
+  else if(data&&data.tuya)tuyaReauth=false;
+  else tuyaReauth=tuyaStatus==="reauth_required";
   var ghReauth=ghErr&&ghErr.error&&ghErr.error.code==="reauth_required";
   if(tuyaReauth&&ghReauth){
-    var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+    var nodes=[];
     var t=document.createElement("span");t.className="banner-text";
-    t.textContent="Both backends need you to sign in again. Tuya uses the QR code below. Google Home needs a browser sign-in, see the command after you fix Tuya.";
-    b.appendChild(t);
-    b.appendChild(makeBtn("Sign in to Tuya (QR)",false,function(){openQr();}));
+    t.textContent="Both backends need you to sign in again. Tuya uses the QR code here. Google Home needs a browser sign-in, run this command and press Refresh:";
+    nodes.push(t);
+    var c1=document.createElement("code");c1.textContent="home gh login --email <your-email>";nodes.push(c1);
+    var note=document.createElement("span");note.className="banner-text";
+    note.textContent="If this panel runs in a container, run: ";
+    nodes.push(note);
+    var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";nodes.push(c2);
+    nodes.push(makeBtn("Sign in to Tuya (QR)",false,function(){openQr();}));
+    nodes.push(makeBtn("Refresh",true,function(){load();}));
+    renderBannerNodes(nodes);
     return;
   }
   if(tuyaReauth){renderTuyaReauth();return;}
@@ -279,9 +306,32 @@ function rowsFor(devices,data){
   });
   return list;
 }
+function rowsKey(rows){
+  return rows.map(function(d){return d.backend+":"+d.id+"|"+d.name+"|"+(d.room||"")+"|"+d.isProtected;}).join(",");
+}
 function renderRows(rows){
   var slot=$("list-slot");
+  // Re-rendering the whole list on every poll threw keyboard focus away and
+  // made sliders unusable. When the device set is unchanged, keep the live
+  // DOM and refresh the state in place instead.
+  var key=rowsKey(rows);
+  if(key&&key===slot._key){
+    var old=slot._rows;
+    rows.forEach(function(now,i){
+      now._stateEl=old[i]._stateEl;now._errEl=old[i]._errEl;
+      now._controlsEl=old[i]._controlsEl;now._teleEl=old[i]._teleEl;
+      now._badgeEl=old[i]._badgeEl;
+      // Keep the optimistic sequence so an in-flight read can still win.
+      now._seq=old[i]._seq;now._state=old[i]._state;now._online=old[i]._online;
+      if(now._badgeEl)now._badgeEl.textContent=now.online===false?"offline":"online";
+    });
+    slot._rows=rows;
+    rows.forEach(function(dev){fetchState(dev);});
+    return;
+  }
   slot.textContent="";
+  slot._rows=rows;
+  slot._key=key;
   if(!rows.length){
     var box=document.createElement("div");
     box.className="empty-box";
@@ -302,6 +352,7 @@ function renderRows(rows){
     badges.className="badges";
     var b1=document.createElement("span");b1.className="badge ok";b1.textContent=dev.label;badges.appendChild(b1);
     var b2=document.createElement("span");b2.className="badge";b2.textContent=dev.online===false?"offline":"online";badges.appendChild(b2);
+    dev._badgeEl=b2;
     if(dev.isProtected){var b3=document.createElement("span");b3.className="badge";b3.textContent="protected";badges.appendChild(b3);}
     li.appendChild(badges);
     var meta=document.createElement("p");
@@ -353,7 +404,7 @@ function stateSummary(dev,data){
   if(!data)return "State: unknown";
   if(dev.backend==="google_home"){
     var t=data.traits||{};
-    if(t.onOff&&typeof t.onOff.on==="boolean")return "State: "+(t.onOff.on?"on":"off");
+    if(t.onOff&&typeof t.onOff.onOff==="boolean")return "State: "+(t.onOff.onOff?"on":"off");
     if(t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean")return "State: "+(t.lockUnlock.isLocked?"locked":"unlocked");
     if(t.armDisarm&&typeof t.armDisarm.isArmed==="boolean")return "State: "+(t.armDisarm.isArmed?"armed":"disarmed");
     if(t.brightness&&typeof t.brightness.brightness==="number")return "State: brightness "+t.brightness.brightness+"%";
@@ -499,7 +550,7 @@ function renderTelemetry(dev,mode,payload){
 function sliderField(dev,labelText,min,max,step,initial,fmt,onSubmit){
   var wrap=document.createElement("div");wrap.className="field";
   var head=document.createElement("div");head.className="field-head";
-  var id=uid("slider-");
+  var id=uid(dev,"slider-");
   var textNode=document.createElement("label");textNode.htmlFor=id;textNode.textContent=labelText;
   var out=document.createElement("span");out.className="val";out.textContent=fmt(initial);
   head.appendChild(textNode);head.appendChild(out);wrap.appendChild(head);
@@ -521,8 +572,13 @@ function switchButton(dev,labelText,onVal,handler){
   b.className="secondary";
   b.setAttribute("role","switch");
   b.setAttribute("aria-checked",onVal?"true":"false");
-  b.setAttribute("aria-label",labelText+" "+dev.name);
+  // Visible text stays in the accessible name (WCAG 2.5.3); the device name
+  // that disambiguates switches is visually hidden instead of an aria-label.
   b.textContent=labelText+": "+(onVal?"On":"Off");
+  var hidden=document.createElement("span");
+  hidden.className="visually-hidden";
+  hidden.textContent=" for "+dev.name;
+  b.appendChild(hidden);
   b.addEventListener("click",handler);
   return b;
 }
@@ -555,11 +611,41 @@ function findTraitState(t,declaredTrait){
   return [short,null];
 }
 
-function buildControl(dev,data){
-  var wrap=dev._controlsEl;wrap.textContent="";
+function offlineControls(dev){
+  var dis=document.createElement("button");
+  dis.type="button";dis.className="secondary";dis.disabled=true;
+  dis.setAttribute("aria-disabled","true");
+  dis.textContent="Power (disabled, device offline)";
+  dis.title="Offline";
+  var disName=document.createElement("span");disName.className="visually-hidden";disName.textContent=" for "+dev.name;dis.appendChild(disName);
+  return [dis,readonlyRow("Device is offline. Reconnect it first, then press Refresh.")];
+}
+function buildControl(dev,data,err){
+  // Every poll rebuilt the controls, which threw away keyboard focus in the
+  // middle of a slider drag. Build off-document and swap only when the markup
+  // actually changed; when it did, put focus back on the same control.
+  var target=dev._controlsEl;
+  var focusables=target.querySelectorAll("button,input,select");
+  var focused=-1;
+  for(var i=0;i<focusables.length;i++){if(focusables[i]===document.activeElement){focused=i;break;}}
+  var wrap=document.createElement("div");
+  buildControlInto(dev,data,err,wrap);
+  if(wrap.innerHTML===target.innerHTML)return;
+  target.textContent="";
+  while(wrap.firstChild)target.appendChild(wrap.firstChild);
+  if(focused!==-1){
+    var next=target.querySelectorAll("button,input,select");
+    if(next[focused])next[focused].focus();
+  }
+}
+function buildControlInto(dev,data,err,wrap){
   if(dev.isProtected){
     wrap.appendChild(readonlyRow("protected"));
     wrap.appendChild(readonlyRow("Protected. Read-only, controls disabled."));
+    return;
+  }
+  if(errCode(err)==="device_offline"||(!data&&dev._online===false)){
+    offlineControls(dev).forEach(function(n){wrap.appendChild(n);});
     return;
   }
   if(!data){
@@ -568,14 +654,7 @@ function buildControl(dev,data){
     return;
   }
   if(dev._online===false){
-    var dis=document.createElement("button");
-    dis.type="button";dis.className="secondary";dis.disabled=true;
-    dis.setAttribute("aria-disabled","true");
-    dis.textContent="Power (disabled, device offline)";
-    dis.title="Offline";
-    dis.setAttribute("aria-label","Power control for "+dev.name+" (offline)");
-    wrap.appendChild(dis);
-    wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
+    offlineControls(dev).forEach(function(n){wrap.appendChild(n);});
     return;
   }
   if(dev.backend==="google_home"){
@@ -584,12 +663,12 @@ function buildControl(dev,data){
     traits.forEach(function(t){var k=traitKnownName(t);if(k)known[k]=true;});
     var t=ghTraits(dev);
     if(known.onOff){
-      var isOn=t.onOff&&typeof t.onOff.on==="boolean"?t.onOff.on:false;
+      var isOn=t.onOff&&typeof t.onOff.onOff==="boolean"?t.onOff.onOff:false;
       wrap.appendChild(switchButton(dev,"Power",isOn,function(){
         var next=!isOn;
         optimistic(dev,function(st){
           if(!st.traits)st.traits={};if(!st.traits.onOff)st.traits.onOff={};
-          st.traits.onOff.on=next;
+          st.traits.onOff.onOff=next;
         },function(){return ghSetPost(dev,{trait:"onOff",value:next});});
       }));
     }
@@ -628,7 +707,7 @@ function buildControl(dev,data){
       var modes=["off","heat","cool","heatcool","auto"];
       var row=document.createElement("div");row.className="row";
       var f1=document.createElement("div");f1.className="field";f1.style.flex="1 1 10rem";
-      var idM=uid("mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent="Mode";f1.appendChild(lm);
+      var idM=uid(dev,"mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent="Mode";f1.appendChild(lm);
       var sel=document.createElement("select");sel.id=idM;
       modes.forEach(function(m){
         var o=document.createElement("option");o.value=m;o.textContent=m;sel.appendChild(o);
@@ -640,7 +719,7 @@ function buildControl(dev,data){
       sel.value=mode;
       f1.appendChild(sel);row.appendChild(f1);
       var f2=document.createElement("div");f2.className="field";f2.style.flex="1 1 10rem";
-      var idS=uid("setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent="Setpoint (degrees)";f2.appendChild(ls);
+      var idS=uid(dev,"setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent="Setpoint (degrees)";f2.appendChild(ls);
       var num=document.createElement("input");
       num.type="number";num.id=idS;num.step="0.5";num.min="-20";num.max="60";
       num.value=String(setpoint);num.setAttribute("inputmode","decimal");
@@ -675,7 +754,7 @@ function buildControl(dev,data){
       var lockBtn=document.createElement("button");
       lockBtn.type="button";lockBtn.className="secondary";
       lockBtn.textContent=isLocked===true?"Unlock":"Lock";
-      lockBtn.setAttribute("aria-label",(isLocked?"Unlock ":"Lock ")+dev.name);
+      var lockName=document.createElement("span");lockName.className="visually-hidden";lockName.textContent=" "+dev.name;lockBtn.appendChild(lockName);
       lockBtn.addEventListener("click",function(){
         if(isLocked===true){
           confirmAction("Confirm sensitive action","Unlock "+dev.name+"? Confirm to send unlock.","Unlock",function(){
@@ -696,7 +775,7 @@ function buildControl(dev,data){
       var armBtn=document.createElement("button");
       armBtn.type="button";armBtn.className="secondary";
       armBtn.textContent=isArmed===true?"Disarm":"Arm";
-      armBtn.setAttribute("aria-label",(isArmed?"Disarm ":"Arm ")+dev.name);
+      var armName=document.createElement("span");armName.className="visually-hidden";armName.textContent=" "+dev.name;armBtn.appendChild(armName);
       armBtn.addEventListener("click",function(){
         if(isArmed===true){
           confirmAction("Confirm sensitive action","Disarm "+dev.name+"? Confirm to send disarm.","Disarm",function(){

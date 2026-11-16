@@ -14,12 +14,13 @@ ARG TARGETPLATFORM
 # false and fetch from crates.io. Committed repos ship neither dir,
 # so the same Dockerfile serves both cases.
 ARG CARGO_OFFLINE=false
+# Layer cache: manifests first, sources after. The .dockerignore whitelist
+# keeps the context to the manifests and sources, plus optional vendor/ and
+# .cargo/ that only offline builds stage, so `COPY . .` picks them up when
+# present and skips them cleanly when absent.
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 COPY src ./src
-# Optional .cargo/vendor dirs appear only in offline builds; the
-# .dockerignore whitelist makes `COPY . .` carry them when present
-# and skip them cleanly when absent.
 COPY . .
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
       rustup target add aarch64-unknown-linux-gnu \

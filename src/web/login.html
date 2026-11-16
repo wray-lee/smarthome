@@ -34,6 +34,8 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 </main>
 <script>
 (function(){
+  // The server renders a failed POST as an inline alert plus aria-invalid;
+  // the query-string branch covers the redirect form of the same error.
   var m=/[?&]error=([^&#]*)/.exec(location.search);
   var slot=document.getElementById("server-err");
   if(m){
@@ -41,8 +43,8 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
     p.setAttribute("role","alert");
     p.textContent=decodeURIComponent(m[1].replace(/\+/g," "));
     slot.appendChild(p);
-    document.getElementById("pw").setAttribute("aria-invalid","true");
   }
+  if(slot.querySelector('[role="alert"]'))document.getElementById("pw").setAttribute("aria-invalid","true");
 })();
 </script>
 </body>

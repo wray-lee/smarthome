@@ -462,17 +462,34 @@ fn parse_device(raw: &str) -> Result<(&'static str, String), (ErrorBody, Exit)> 
 // ---------------------------------------------------------------------------
 
 /// The session cookie the password login sets. `HttpOnly` because no script
-/// needs it, `SameSite=Lax` because the only cross-site arrival is a typed
-/// link, and a fixed age because Tuya's own access token lives about two
-/// hours.
+/// needs it, `SameSite=Strict` because nothing here is ever reached from
+/// another site, and a fixed age because Tuya's own access token lives about
+/// two hours.
 const SESSION_COOKIE: &str = "home_session";
 const COOKIE_MAX_AGE: u64 = 8 * 3600;
+
+/// Every response, page or JSON: no framing, no sniffing, no cache, no
+/// referrer. The panel is a single-user control surface, so nothing it
+/// returns belongs in a proxy or inside another page.
+const SECURITY_HEADERS: &[(&str, &str)] = &[
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    (
+        "Content-Security-Policy",
+        "frame-ancestors 'none'; base-uri 'none'",
+    ),
+    ("Referrer-Policy", "no-referrer"),
+    ("Cache-Control", "no-store"),
+];
 
 /// Everything a handler needs, shared by every connection thread.
 struct ServerState {
     store: Arc<Mutex<Store>>,
     password: Vec<u8>,
-    sessions: Mutex<HashMap<String, ()>>,
+    /// Session id -> expiry (Unix seconds). The browser's cookie carries the
+    /// same age; keeping it here too means a captured id dies on schedule
+    /// instead of living until the process restarts.
+    sessions: Mutex<HashMap<String, u64>>,
     cookie_secure: bool,
     tuya_reauth: Mutex<Option<String>>,
     /// QR login in flight: `token -> user_code`, so a poll can fall back on
@@ -482,33 +499,25 @@ struct ServerState {
 }
 
 fn new_session_id() -> String {
-    // 16 random bytes, hex: unguessable enough for a LAN cookie.
-    let mut bytes = [0u8; 16];
-    match std::fs::File::open("/dev/urandom") {
-        Ok(mut f) => {
-            let _ = f.read_exact(&mut bytes);
-        }
-        Err(_) => {
-            // Fall back to the nanos clock; still unpredictable over the LAN.
-            let t = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_nanos())
-                .unwrap_or(0);
-            for (i, b) in bytes.iter_mut().enumerate() {
-                *b = ((t >> (i * 8)) & 0xff) as u8;
-            }
-        }
+    // 32 bytes from the OS CSPRNG, hex: unguessable even if the panel is
+    // reached from off the LAN. getrandom is already a dependency and works
+    // on Windows, where `/dev/urandom` does not exist.
+    let mut bytes = [0u8; 32];
+    if getrandom::fill(&mut bytes).is_err() {
+        // No OS randomness: refuse to mint a guessable session rather than
+        // fall back on the clock.
+        eprintln!("home serve: no OS randomness for a session id");
+        return String::new();
     }
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff = 0u8;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
+    // Compare past the shorter input and fold the length in, so the timing
+    // does not say how long the password is.
+    let mut diff = a.len() ^ b.len();
+    for i in 0..a.len().max(b.len()) {
+        diff |= usize::from(a.get(i).copied().unwrap_or(0) ^ b.get(i).copied().unwrap_or(0));
     }
     diff == 0
 }
@@ -589,6 +598,9 @@ fn http_reply(
         "HTTP/1.1 {status} {reason}\r\nContent-Type: {ct}\r\nContent-Length: {}\r\nConnection: close\r\n",
         body.len()
     );
+    for (k, v) in SECURITY_HEADERS {
+        head.push_str(&format!("{k}: {v}\r\n"));
+    }
     for (k, v) in extra {
         head.push_str(&format!("{k}: {v}\r\n"));
     }
@@ -636,12 +648,19 @@ fn session_from_cookie(headers: &HashMap<String, String>) -> Option<String> {
 }
 
 fn is_authenticated(state: &ServerState, headers: &HashMap<String, String>) -> bool {
-    match session_from_cookie(headers) {
-        Some(id) => state
-            .sessions
-            .lock()
-            .map(|s| s.contains_key(&id))
-            .unwrap_or(false),
+    let Some(id) = session_from_cookie(headers) else {
+        return false;
+    };
+    let now = home_store::store::now_unix() as u64;
+    let Ok(mut sessions) = state.sessions.lock() else {
+        return false;
+    };
+    match sessions.get(&id) {
+        Some(expires_at) if *expires_at > now => true,
+        Some(_) => {
+            sessions.remove(&id);
+            false
+        }
         None => false,
     }
 }
@@ -782,7 +801,15 @@ fn handle(
                 return http_reply(stream, 401, "Unauthorized", &page, &[]);
             }
             let id = new_session_id();
-            let _ = state.sessions.lock().map(|mut s| s.insert(id.clone(), ()));
+            if id.is_empty() {
+                let body = json_err(ErrorBody::new("storage", "no session id available"));
+                return http_reply(stream, 500, "Internal Server Error", &body, &[]);
+            }
+            let expires_at = home_store::store::now_unix() as u64 + COOKIE_MAX_AGE;
+            let _ = state
+                .sessions
+                .lock()
+                .map(|mut s| s.insert(id.clone(), expires_at));
             let page = index_page();
             let secure_attr = if state.cookie_secure { "Secure; " } else { "" };
             return http_reply(
@@ -1386,6 +1413,36 @@ mod tests {
         let mut headers = HashMap::new();
         headers.insert("cookie".into(), "other=1".into());
         assert!(session_from_cookie(&headers).is_none());
+    }
+
+    #[test]
+    fn a_session_cookie_stops_working_when_its_age_runs_out() {
+        let store = Store::open_in_memory().unwrap();
+        let now = home_store::store::now_unix() as u64;
+        let state = ServerState {
+            store: Arc::new(Mutex::new(store)),
+            password: b"pw".to_vec(),
+            sessions: Mutex::new(HashMap::from([
+                ("live".to_string(), now + 60),
+                ("stale".to_string(), now - 1),
+            ])),
+            cookie_secure: false,
+            tuya_reauth: Mutex::new(None),
+            pending_tuya_qr: Mutex::new(HashMap::new()),
+        };
+        let cookie = |v: &str| HashMap::from([("cookie".to_string(), format!("home_session={v}"))]);
+        assert!(is_authenticated(&state, &cookie("live")));
+        assert!(!is_authenticated(&state, &cookie("stale")));
+        assert!(!is_authenticated(&state, &cookie("never-issued")));
+        // The expired id is dropped, so it cannot come back.
+        assert!(!state.sessions.lock().unwrap().contains_key("stale"));
+    }
+
+    #[test]
+    fn a_new_session_id_is_unguessable_and_never_empty() {
+        let a = new_session_id();
+        assert_eq!(a.len(), 64, "{a}");
+        assert_ne!(a, new_session_id());
     }
 
     #[test]

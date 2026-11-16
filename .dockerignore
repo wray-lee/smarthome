@@ -1,10 +1,7 @@
-# Dockerfile and everything it needs
+# Build context: the build toolchain only. Everything else is cargo's job.
+*
 !Dockerfile
 !Cargo.toml
 !Cargo.lock
 !crates/**
 !src/**
-# Offline vendored sources: staged by the verification script only,
-# absent from a normal checkout (and ignored by git via .gitignore).
-!vendor/**
-!.cargo/**
