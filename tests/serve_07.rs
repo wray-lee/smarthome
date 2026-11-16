@@ -688,6 +688,14 @@ fn index_smoke_landmarks_and_controls() {
         !body.contains(char::from_u32(0x2014).unwrap()),
         "no em dash"
     );
+    // Device state is served in the shape control.rs emits, so the panel must
+    // write back the same trait/field names it reads.
+    for needle in [
+        "temperatureSetting.thermostatTemperatureSetpoint",
+        "traits.color.colorTemperature",
+    ] {
+        assert!(body.contains(needle), "index writes {needle:?}");
+    }
 }
 
 /// Smoke: login page contract strings.

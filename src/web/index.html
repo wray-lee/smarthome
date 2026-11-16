@@ -685,22 +685,23 @@ function buildControlInto(dev,data,err,wrap){
     }
     if(known.color){
       var c0=4200;
-      var cs=t.colorSetting||t.color;
-      if(cs){if(typeof cs.temperatureK==="number")c0=cs.temperatureK;else if(typeof cs.colorTemperature==="number")c0=cs.colorTemperature;}
+      var cs=t.color||t.colorSetting;
+      if(cs){if(typeof cs.colorTemperature==="number")c0=cs.colorTemperature;else if(typeof cs.temperatureK==="number")c0=cs.temperatureK;}
       wrap.appendChild(sliderField(dev,"Color temperature",1000,10000,100,c0,function(v){
         return v+" K";
       },function(v){
         optimistic(dev,function(st){
           if(!st.traits)st.traits={};
-          if(!st.traits.colorSetting)st.traits.colorSetting={};
-          st.traits.colorSetting.temperatureK=v;
+          if(!st.traits.color)st.traits.color={};
+          st.traits.color.colorTemperature=v;
         },function(){return ghSetPost(dev,{trait:"color.colorTemperature",value:v});});
       }));
     }
     if(known.thermostat){
       var th=t.temperatureSetting||t.thermostat||t.temperature||{};
-      var mode=th.thermostatMode||th.mode||"auto";
-      var setpoint=th.thermostatSetpoint;
+      var mode=th.mode||th.thermostatMode||"auto";
+      var setpoint=th.thermostatTemperatureSetpoint;
+      if(typeof setpoint!=="number")setpoint=th.thermostatSetpoint;
       if(typeof setpoint!=="number")setpoint=th.setpoint;
       if(typeof setpoint!=="number")setpoint=th.thermostatSetpointHigh;
       if(typeof setpoint!=="number")setpoint=21;
@@ -731,8 +732,8 @@ function buildControlInto(dev,data,err,wrap){
         optimistic(dev,function(st){
           if(!st.traits)st.traits={};
           if(!st.traits.temperatureSetting)st.traits.temperatureSetting={};
-          st.traits.temperatureSetting.thermostatMode=m;
-          st.traits.temperatureSetting.thermostatSetpoint=sp;
+          st.traits.temperatureSetting.mode=m;
+          st.traits.temperatureSetting.thermostatTemperatureSetpoint=sp;
         },function(){return ghSetPost(dev,{trait:"thermostat",value:sp,mode:m,setpoint:sp});});
       });
       row.appendChild(apply);
