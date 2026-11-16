@@ -214,7 +214,7 @@ tests), `HOME_TUYA_USER_CODE`, `HOME_TUYA_POLL_MS` and
 to start without a password (`HOME_PASSWORD`, `--password`, or
 `HOME_PASSWORD_FILE`/`--password-file`, preferred for Docker because argv is
 visible to other processes). It serves the panel at `/`, the login form at
-`/login` (POST sets an `HttpOnly; SameSite=Lax` `home_session` cookie; add
+`/login` (POST sets an `HttpOnly; SameSite=Strict` `home_session` cookie; add
 `--secure-cookie` or set `HOME_COOKIE_SECURE` when the panel sits behind an
 HTTPS reverse proxy so the cookie carries `Secure`), and a JSON API under
 `/api/`. Unauthenticated API requests return 401 JSON (`unauthorized`); a

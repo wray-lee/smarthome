@@ -235,7 +235,12 @@ fn run(cli: &Cli) -> Result<serde_json::Value, (ErrorBody, Exit)> {
             let password = match &args.password_file {
                 Some(path) => std::fs::read_to_string(path)
                     .map(|s| s.trim_end_matches(['\r', '\n']).to_string())
-                    .unwrap_or_default(),
+                    .map_err(|e| {
+                        (
+                            ErrorBody::usage(format!("reading password file {path}: {e}")),
+                            Exit::Usage,
+                        )
+                    })?,
                 None => args.password.clone().unwrap_or_default(),
             };
             if password.trim().is_empty() {
@@ -465,11 +470,11 @@ const COOKIE_MAX_AGE: u64 = 8 * 3600;
 
 /// Everything a handler needs, shared by every connection thread.
 struct ServerState {
-    db: PathBuf,
     store: Arc<Mutex<Store>>,
     password: Vec<u8>,
     sessions: Mutex<HashMap<String, ()>>,
     cookie_secure: bool,
+    tuya_reauth: Mutex<Option<String>>,
 }
 
 fn new_session_id() -> String {
@@ -592,6 +597,18 @@ fn http_reply(
 const LOGIN_HTML: &str = include_str!("web/login.html");
 const INDEX_HTML: &str = include_str!("web/index.html");
 
+fn exit_http(exit: Exit) -> (u16, &'static str) {
+    match exit {
+        Exit::Ok => (200, "OK"),
+        Exit::Usage => (400, "Bad Request"),
+        Exit::Ambiguous => (409, "Conflict"),
+        Exit::Offline => (503, "Service Unavailable"),
+        Exit::ReauthRequired => (424, "Failed Dependency"),
+        Exit::Refused => (403, "Forbidden"),
+        Exit::Upstream => (502, "Bad Gateway"),
+    }
+}
+
 fn json_ok(body: serde_json::Value) -> String {
     serde_json::to_string(&ok(body)).unwrap_or_default()
 }
@@ -674,11 +691,11 @@ fn serve(
 ) -> Result<serde_json::Value, (ErrorBody, Exit)> {
     let store = Store::open(db).map_err(storage)?;
     let state = Arc::new(ServerState {
-        db: db.to_path_buf(),
         store: Arc::new(Mutex::new(store)),
         password: password.as_bytes().to_vec(),
         sessions: Mutex::new(HashMap::new()),
         cookie_secure,
+        tuya_reauth: Mutex::new(None),
     });
 
     // Background Tuya refresh: a thread that re-opens the store and, on its
@@ -729,6 +746,24 @@ fn handle(
     };
 
     // The login form and the login POST are the only unauthenticated paths.
+    // `GET /` is the same exception but only when Accept asks for HTML; every
+    // other request without a session is 401 JSON below.
+    if !is_authenticated(state, headers) {
+        let html_root = method == "GET"
+            && path == "/"
+            && headers
+                .get("accept")
+                .map(|a| a.contains("text/html"))
+                .unwrap_or(false);
+        if !matches!(
+            (method.as_str(), path),
+            ("GET", "/login") | ("POST", "/login")
+        ) && !html_root
+        {
+            let body = json_err(ErrorBody::new("unauthorized", "password required"));
+            return http_reply(stream, 401, "Unauthorized", &body, &[]);
+        }
+    }
     match (method.as_str(), path) {
         ("GET", "/login") => {
             let page = login_page();
@@ -751,7 +786,7 @@ fn handle(
                 "OK",
                 &page,
                 &[( "Set-Cookie",
-                    &format!("{SESSION_COOKIE}={id}; HttpOnly; SameSite=Lax; {secure_attr}Path=/; Max-Age={COOKIE_MAX_AGE}"),
+                    &format!("{SESSION_COOKIE}={id}; HttpOnly; SameSite=Strict; {secure_attr}Path=/; Max-Age={COOKIE_MAX_AGE}"),
                 )],
             );
         }
@@ -768,36 +803,20 @@ fn handle(
                 &[(
                     "Set-Cookie",
                     &format!(
-                        "{SESSION_COOKIE}=; HttpOnly; SameSite=Lax; {secure_attr}Path=/; Max-Age=0"
+                        "{SESSION_COOKIE}=; HttpOnly; SameSite=Strict; {secure_attr}Path=/; Max-Age=0"
                     ),
                 )],
             );
         }
         ("GET", "/") => {
-            // The panel shell: JSON at /api/*, a static page here. Unauthenticated
-            // browsers get the login page, API callers get 401 JSON.
             if !is_authenticated(state, headers) {
-                if headers
-                    .get("accept")
-                    .map(|a| a.contains("text/html"))
-                    .unwrap_or(false)
-                {
-                    let page = login_page();
-                    return http_reply(stream, 200, "OK", &page, &[]);
-                }
-                let body = json_err(ErrorBody::new("unauthorized", "password required"));
-                return http_reply(stream, 401, "Unauthorized", &body, &[]);
+                let page = login_page();
+                return http_reply(stream, 200, "OK", &page, &[]);
             }
             let page = index_page();
             return http_reply(stream, 200, "OK", &page, &[]);
         }
         _ => {}
-    }
-
-    // Everything under /api/ needs a session.
-    if path.starts_with("/api/") && !is_authenticated(state, headers) {
-        let body = json_err(ErrorBody::new("unauthorized", "password required"));
-        return http_reply(stream, 401, "Unauthorized", &body, &[]);
     }
 
     let (path, query) = match target.split_once('?') {
@@ -810,21 +829,34 @@ fn handle(
             http_reply(stream, 200, "OK", &body, &[]);
         }
         ("GET", "/api/status") => {
-            // Re-auth state the panel shows: a reauth failure on either Backend
-            // surfaces here with its Backend name.
-            let body = json_ok(serde_json::json!({"status": "ok"}));
+            // Re-auth state the panel shows: a Tuya refresh failure surfaces
+            // here as tuya.status=reauth_required; the panel banners on it.
+            let reauth = state.tuya_reauth.lock().ok().and_then(|m| m.clone());
+            let body = match reauth {
+                None => json_ok(serde_json::json!({"status": "ok", "tuya": {"status": "ok"}})),
+                Some(msg) => json_ok(serde_json::json!({
+                    "status": "degraded",
+                    "tuya": {"status": "reauth_required", "message": msg},
+                })),
+            };
             http_reply(stream, 200, "OK", &body, &[]);
         }
         ("GET", "/api/devices") => match api_devices(state) {
             Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
-            Err((b, _)) => http_reply(stream, 200, "OK", &json_err(b), &[]),
+            Err((b, exit)) => {
+                let (status, reason) = exit_http(exit);
+                http_reply(stream, status, reason, &json_err(b), &[])
+            }
         },
         ("GET", "/api/gh/get") => {
             let fields = form_fields(query);
             let device = fields.get("device").map(String::as_str).unwrap_or("");
             match api_gh_get(state, device) {
                 Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
-                Err((b, _)) => http_reply(stream, 200, "OK", &json_err(b), &[]),
+                Err((b, exit)) => {
+                    let (status, reason) = exit_http(exit);
+                    http_reply(stream, status, reason, &json_err(b), &[])
+                }
             }
         }
         ("POST", "/api/gh/set") => {
@@ -837,7 +869,10 @@ fn handle(
             let setpoint = fields.get("setpoint").and_then(|v| v.trim().parse().ok());
             match api_gh_set(state, device, trait_name, value, mode, setpoint, confirm) {
                 Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
-                Err((b, _)) => http_reply(stream, 200, "OK", &json_err(b), &[]),
+                Err((b, exit)) => {
+                    let (status, reason) = exit_http(exit);
+                    http_reply(stream, status, reason, &json_err(b), &[])
+                }
             }
         }
         ("GET", "/api/tuya/get") => {
@@ -845,7 +880,10 @@ fn handle(
             let device = fields.get("device").map(String::as_str).unwrap_or("");
             match api_tuya_get(state, device) {
                 Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
-                Err((b, _)) => http_reply(stream, 200, "OK", &json_err(b), &[]),
+                Err((b, exit)) => {
+                    let (status, reason) = exit_http(exit);
+                    http_reply(stream, status, reason, &json_err(b), &[])
+                }
             }
         }
         ("POST", "/api/tuya/on") | ("POST", "/api/tuya/off") => {
@@ -854,7 +892,10 @@ fn handle(
             let on = path.ends_with("/on");
             match api_tuya_on_off(state, device, on) {
                 Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
-                Err((b, _)) => http_reply(stream, 200, "OK", &json_err(b), &[]),
+                Err((b, exit)) => {
+                    let (status, reason) = exit_http(exit);
+                    http_reply(stream, status, reason, &json_err(b), &[])
+                }
             }
         }
         _ => {
@@ -895,8 +936,16 @@ fn api_devices(state: &ServerState) -> Result<serde_json::Value, (ErrorBody, Exi
         match tuya_backend::devices_command(&tcfg, &store) {
             Ok(v) => {
                 out.insert("tuya".into(), v);
+                if let Ok(mut m) = state.tuya_reauth.lock() {
+                    *m = None;
+                }
             }
-            Err((b, _)) => {
+            Err((b, exit)) => {
+                if exit == Exit::ReauthRequired {
+                    if let Ok(mut m) = state.tuya_reauth.lock() {
+                        *m = Some(b.message.clone());
+                    }
+                }
                 out.insert("tuya_error".into(), b.to_json());
             }
         }
@@ -960,7 +1009,9 @@ fn api_tuya_get(state: &ServerState, device: &str) -> Result<serde_json::Value, 
         )
     })?;
     let cfg = tuya_backend::Config::from_env();
-    tuya_backend::get_command(&cfg, &store, device)
+    let result = tuya_backend::get_command(&cfg, &store, device);
+    sync_tuya_reauth(state, &result);
+    result
 }
 
 fn api_tuya_on_off(
@@ -975,47 +1026,98 @@ fn api_tuya_on_off(
         )
     })?;
     let cfg = tuya_backend::Config::from_env();
-    tuya_backend::on_off_command(&cfg, &store, device, on)
+    let result = tuya_backend::on_off_command(&cfg, &store, device, on);
+    sync_tuya_reauth(state, &result);
+    result
 }
 
-/// The background refresh loop. Returns only on a fatal setup error; per-tick
-/// failures are logged and the loop keeps its 10 s cadence.
+fn sync_tuya_reauth(state: &ServerState, result: &Result<serde_json::Value, (ErrorBody, Exit)>) {
+    match result {
+        Ok(_) => {
+            if let Ok(mut m) = state.tuya_reauth.lock() {
+                *m = None;
+            }
+        }
+        Err((body, Exit::ReauthRequired)) => {
+            if let Ok(mut m) = state.tuya_reauth.lock() {
+                *m = Some(body.message.clone());
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The background refresh loop. Uses the panel's own `Store` behind the same
+/// serial lock every handler uses, so a refresh can never sign with a token
+/// another request just rotated away, and a rotated token is persisted before
+/// anyone else uses it. `HOME_TUYA_REFRESH_POLL_MS` (default 10000, min 20)
+/// sets the tick; `Ok(None)` (no Tuya session yet) just waits for an outside
+/// login instead of marking the backend reauth.
 fn background_refresh(state: Arc<ServerState>) -> Result<(), ()> {
-    let store = match Store::open(&state.db) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("home serve: background refresh could not open the store: {e}");
-            return Err(());
-        }
-    };
-    let cfg = tuya_backend::Config::from_env();
-    // No stored session yet: nothing to keep alive; log once and stop.
-    let client = match tuya_backend::TuyaClient::open(&store, &cfg) {
-        Ok(c) => c,
-        Err(f) => {
-            eprintln!(
-                "home serve: no Tuya session for background refresh: {}",
-                f.body.message
-            );
-            return Ok(());
-        }
-    };
-    eprintln!("home serve: Tuya background refresh running (10 s ticker)");
+    let poll_ms = std::env::var("HOME_TUYA_REFRESH_POLL_MS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(10_000)
+        .max(20);
+    eprintln!("home serve: Tuya background refresh running ({poll_ms} ms ticker)");
     loop {
-        std::thread::sleep(Duration::from_secs(10));
+        std::thread::sleep(Duration::from_millis(poll_ms));
+        let store = match state.store.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                eprintln!("home serve: background refresh lock poisoned: {e}");
+                continue;
+            }
+        };
+        let loaded = tuya_backend::Session::load(&store);
+        let session = match loaded {
+            Ok(None) => continue,
+            Ok(Some(s)) => s,
+            Err(e) => {
+                eprintln!("home serve: background refresh could not load session: {e}");
+                if let Ok(mut m) = state.tuya_reauth.lock() {
+                    *m = Some(e.to_string());
+                }
+                continue;
+            }
+        };
+        let cfg = tuya_backend::Config::from_env();
+        let client = match tuya_backend::TuyaClient::with_session(session, &cfg, &store) {
+            Ok(c) => c,
+            Err(f) => {
+                eprintln!(
+                    "home serve: background refresh open failed: {}",
+                    f.body.message
+                );
+                if let Ok(mut m) = state.tuya_reauth.lock() {
+                    *m = Some(f.body.message.clone());
+                }
+                continue;
+            }
+        };
         match client.refresh_if_needed() {
             Ok(true) => {
+                if let Ok(mut m) = state.tuya_reauth.lock() {
+                    *m = None;
+                }
                 eprintln!(
                     "home serve: Tuya token refreshed, next expiry in {} s",
                     client.secs_until_expiry()
                 );
             }
-            Ok(false) => {}
+            Ok(false) => {
+                if let Ok(mut m) = state.tuya_reauth.lock() {
+                    *m = None;
+                }
+            }
             Err(f) => {
                 eprintln!(
                     "home serve: Tuya background refresh failed [{}]: {}",
                     f.body.code, f.body.message
                 );
+                if let Ok(mut m) = state.tuya_reauth.lock() {
+                    *m = Some(f.body.message.clone());
+                }
             }
         }
     }
