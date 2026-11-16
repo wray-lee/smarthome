@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Project skeleton plus Google Home sign-in and device list
 
-**Status:** in-progress (awaiting live test)
+**Status:** done (2026-11-16)
 
 - [x] `home gh get <device>` prints the current trait state
 - [x] `home gh set <device> <trait> <value>` works for on/off, brightness, color temperature, thermostat mode plus setpoint (sent together), and volume
@@ -15,8 +15,8 @@
 - [x] The Google Home Backend exposes only list / get state / set trait to the rest of the workspace (the seam for a future Home MCP implementation)
 - [x] Any `set` on a protected Device (ticket 02) gives exit 6 with a `protected` error, even with `--confirm`, and no trait RPC is sent: the guard sits right after the `GetHomeGraph` name resolution, so the offline-check `GetTraits` does not run either (asserted on the fake: exactly one request, zero `GetTraits`, zero `UpdateTraits`). Reading its state still works
 - [x] Black-box tests cover every criterion above against the fake foyer
-- [ ] Live checks against the real account target only the Home plug. Never send any write to LAB
-- [ ] Live guard test on the Home plug (Google Home ID: real ID, see the device table in the local, untracked `.scratch/smarthome-v1/validation.md`): record its state, `home protect` it, `home gh set … onOff false` gives exit 6, a later read shows the state unchanged, `home protect --remove` it, then one normal off/on round trip succeeds. Leave it on at the end
+- [x] Live checks against the real account target only the Home plug. Never send any write to LAB
+- [x] Live guard test on the Home plug (Google Home ID: real ID, see the device table in the local, untracked `.scratch/smarthome-v1/validation.md`): record its state, `home protect` it, `home gh set … onOff false` gives exit 6, a later read shows the state unchanged, `home protect --remove` it, then one normal off/on round trip succeeds. Leave it on at the end
 
 Offline work is done (2026-11-16, commits in
 `.scratch/smarthome-v1/build-notes-0304.md` `## final integration`);
@@ -24,3 +24,8 @@ Offline work is done (2026-11-16, commits in
 workspace gates green. The two unchecked items need the real account and are
 listed in `.scratch/smarthome-v1/build-notes-0304.md` (`## Live steps (tickets 03/04, human-in-the-loop)`).
 Real IDs come from `validation.md`, never from this file.
+
+Live run 2026-11-16 (Windows GNU build): login ok; Home read onOff true;
+protected `set onOff false` gave exit 6 `protected`, readback still true;
+after `--remove`, off and on both exit 0 with matching readbacks; left on.
+No command was sent to LAB.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Validate both Backends with the user's real accounts; 02 — Project skeleton plus Google Home sign-in and device list
 
-**Status:** in-progress (awaiting live test)
+**Status:** done (2026-11-16)
 
 CLI wiring (`home tuya login|devices|keys`) is in (commits in
 `.scratch/smarthome-v1/build-notes-0304.md` `## final integration`).
