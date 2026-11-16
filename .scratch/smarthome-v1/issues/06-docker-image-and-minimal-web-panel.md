@@ -11,6 +11,7 @@
 - [ ] The panel lists Devices from both Backends with a Backend label and an on/off control. It is a static page with no front-end build step
 - [ ] Protected Devices show their state with a visible "protected" label (text, not color alone) and no on/off control. Their write endpoints return the same exit-6 JSON error
 - [ ] Sensitive Actions require the same explicit confirmation as the CLI
+- [ ] While `home serve` runs, it keeps the Tuya session alive without waiting for a request: a background task refreshes the access token shortly before it expires and persists the rotated refresh token first (same path as ticket 04, same serial lock). A failed refresh is logged and shown in the panel as `reauth_required` for the Tuya Backend. Black-box test with a fake upstream and a short `expireTime`: a refresh happens with zero client requests
 - [ ] A multi-stage Dockerfile builds with `docker buildx` for linux/amd64 and linux/arm64. The SQLite file lives on a mounted volume and is never baked into the image
 - [ ] Smoke test: 401 without the password, and with it the device list matches the CLI's JSON
 - [ ] README states that the SQLite file is the key to the whole home and the Google account, and that remote access goes through Tailscale
