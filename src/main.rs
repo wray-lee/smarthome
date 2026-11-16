@@ -475,6 +475,10 @@ struct ServerState {
     sessions: Mutex<HashMap<String, ()>>,
     cookie_secure: bool,
     tuya_reauth: Mutex<Option<String>>,
+    /// QR login in flight: `token -> user_code`, so a poll can fall back on
+    /// the code the start used without the form repeating it. Bounded in the
+    /// start handler so stale tokens cannot grow without limit.
+    pending_tuya_qr: Mutex<HashMap<String, String>>,
 }
 
 fn new_session_id() -> String {
@@ -696,6 +700,7 @@ fn serve(
         sessions: Mutex::new(HashMap::new()),
         cookie_secure,
         tuya_reauth: Mutex::new(None),
+        pending_tuya_qr: Mutex::new(HashMap::new()),
     });
 
     // Background Tuya refresh: a thread that re-opens the store and, on its
@@ -831,12 +836,20 @@ fn handle(
         ("GET", "/api/status") => {
             // Re-auth state the panel shows: a Tuya refresh failure surfaces
             // here as tuya.status=reauth_required; the panel banners on it.
+            // `tuya_user_code_configured` only says a code is available (env or
+            // the stored session); it never carries the code itself.
             let reauth = state.tuya_reauth.lock().ok().and_then(|m| m.clone());
+            let configured = tuya_user_code_configured(state);
             let body = match reauth {
-                None => json_ok(serde_json::json!({"status": "ok", "tuya": {"status": "ok"}})),
+                None => json_ok(serde_json::json!({
+                    "status": "ok",
+                    "tuya": {"status": "ok"},
+                    "tuya_user_code_configured": configured,
+                })),
                 Some(msg) => json_ok(serde_json::json!({
                     "status": "degraded",
                     "tuya": {"status": "reauth_required", "message": msg},
+                    "tuya_user_code_configured": configured,
                 })),
             };
             http_reply(stream, 200, "OK", &body, &[]);
@@ -898,10 +911,198 @@ fn handle(
                 }
             }
         }
+        ("POST", "/api/tuya/login/start") => {
+            // Reached only past `is_authenticated` above, so unauthenticated
+            // logins are already 401 JSON before this arm runs.
+            let fields = form_fields(body);
+            let form_code = fields.get("user_code").map(String::as_str).unwrap_or("");
+            match api_tuya_login_start(state, form_code) {
+                Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
+                Err((b, exit)) => {
+                    let (status, reason) = exit_http(exit);
+                    http_reply(stream, status, reason, &json_err(b), &[])
+                }
+            }
+        }
+        ("POST", "/api/tuya/login/poll") => {
+            let fields = form_fields(body);
+            let token = fields.get("token").map(String::as_str).unwrap_or("");
+            let form_code = fields.get("user_code").map(String::as_str).unwrap_or("");
+            match api_tuya_login_poll(state, token, form_code) {
+                Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
+                Err((b, exit)) => {
+                    let (status, reason) = exit_http(exit);
+                    http_reply(stream, status, reason, &json_err(b), &[])
+                }
+            }
+        }
         _ => {
             let body = json_err(ErrorBody::usage(format!("unknown path {path}")));
             http_reply(stream, 404, "Not Found", &body, &[]);
         }
+    }
+}
+
+/// Whether a Tuya user code is available at all: the env override, or the
+/// stored session's own code. Never a boolean about access — only whether a
+/// QR login can start without the user typing the code.
+fn tuya_user_code_configured(state: &ServerState) -> bool {
+    if tuya_backend::Config::from_env()
+        .user_code
+        .map(|c| !c.trim().is_empty())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+    let Ok(store) = state.store.lock() else {
+        return false;
+    };
+    tuya_backend::Session::load(&store)
+        .ok()
+        .flatten()
+        .map(|s| !s.user_code.trim().is_empty())
+        .unwrap_or(false)
+}
+
+/// `POST /api/tuya/login/start`: ask Tuya for a QR code and answer with the
+/// token plus its SVG, stashing `token -> user_code` for the polls. The code
+/// falls back form → env → stored session; with none it is a usage error
+/// pointing at the Smart Life app setting.
+fn api_tuya_login_start(
+    state: &ServerState,
+    form_code: &str,
+) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    let cfg = tuya_backend::Config::from_env();
+    let store = state.store.lock().map_err(|_| {
+        (
+            ErrorBody::new("storage", "store lock poisoned"),
+            Exit::Upstream,
+        )
+    })?;
+    let form = form_code.trim().to_string();
+    let env_code = cfg.user_code.clone().unwrap_or_default();
+    let stored_code = tuya_backend::Session::load(&store)
+        .ok()
+        .flatten()
+        .map(|s| s.user_code)
+        .unwrap_or_default();
+    let user_code = if !form.is_empty() {
+        form
+    } else if !env_code.trim().is_empty() {
+        env_code
+    } else if !stored_code.trim().is_empty() {
+        stored_code
+    } else {
+        return Err((
+            ErrorBody::usage(
+                "a user code is required; find it in the Smart Life app under \
+                 Me → Settings → Account and Security → User Code",
+            ),
+            Exit::Usage,
+        ));
+    };
+    let pending = tuya_backend::start_login(&cfg, &user_code)
+        .map_err(|f| (f.body, f.exit))?;
+    let svg = tuya_backend::qr_svg(&pending.qr_text).map_err(|f| (f.body, f.exit))?;
+    let normalized = tuya_backend::login::normalize_code(&user_code);
+    if let Ok(mut map) = state.pending_tuya_qr.lock() {
+        // QR tokens are short-lived; beyond 32 pending ones the old ones are
+        // stale rounds no one will poll, so they go first.
+        if map.len() >= 32 {
+            map.clear();
+        }
+        map.insert(pending.token.clone(), normalized);
+    }
+    Ok(serde_json::json!({"token": pending.token, "qr_svg": svg}))
+}
+
+/// `POST /api/tuya/login/poll`: one check whether the QR was scanned.
+/// `Ok(None)` means still waiting; `Ok(Some(session))` is persisted, the
+/// reauth flag cleared and the Local Keys backed up best-effort, exactly as
+/// `tuya_backend::login_command` does after a CLI login.
+fn api_tuya_login_poll(
+    state: &ServerState,
+    token: &str,
+    form_code: &str,
+) -> Result<serde_json::Value, (ErrorBody, Exit)> {
+    let token = token.trim().to_string();
+    if token.is_empty() {
+        return Err((
+            ErrorBody::usage("token is required"),
+            Exit::Usage,
+        ));
+    }
+    let cfg = tuya_backend::Config::from_env();
+    let store = state.store.lock().map_err(|_| {
+        (
+            ErrorBody::new("storage", "store lock poisoned"),
+            Exit::Upstream,
+        )
+    })?;
+    let form = form_code.trim().to_string();
+    let pending_code = state
+        .pending_tuya_qr
+        .lock()
+        .ok()
+        .and_then(|m| m.get(&token).cloned())
+        .unwrap_or_default();
+    let env_code = cfg.user_code.clone().unwrap_or_default();
+    let stored_code = tuya_backend::Session::load(&store)
+        .ok()
+        .flatten()
+        .map(|s| s.user_code)
+        .unwrap_or_default();
+    let user_code = if !form.is_empty() {
+        form
+    } else if !pending_code.is_empty() {
+        pending_code
+    } else if !env_code.trim().is_empty() {
+        env_code
+    } else {
+        stored_code
+    };
+    if user_code.trim().is_empty() {
+        return Err((
+            ErrorBody::usage(
+                "a user code is required; find it in the Smart Life app under \
+                 Me → Settings → Account and Security → User Code",
+            ),
+            Exit::Usage,
+        ));
+    }
+    match tuya_backend::poll_login(&cfg, &token, &user_code) {
+        Ok(None) => Ok(serde_json::json!({"status": "pending"})),
+        Ok(Some(session)) => {
+            session.save(&store).map_err(storage)?;
+            if let Ok(mut map) = state.pending_tuya_qr.lock() {
+                map.remove(&token);
+            }
+            if let Ok(mut m) = state.tuya_reauth.lock() {
+                *m = None;
+            }
+            // Same best-effort backup as the CLI login: a failure here is
+            // reported on stderr and never undoes a completed sign-in.
+            if let Err(failure) = tuya_backend::TuyaClient::with_session(
+                session.clone(),
+                &cfg,
+                &store,
+            )
+            .and_then(|client| tuya_backend::devices::list_devices(&client))
+            {
+                eprintln!(
+                    "signed in, but fetching Local Keys failed: {}",
+                    failure.body.message
+                );
+            }
+            Ok(serde_json::json!({
+                "status": "authenticated",
+                "backend": tuya_backend::BACKEND,
+                "uid": session.uid,
+                "endpoint": session.endpoint,
+                "expires_at": session.expire_time,
+            }))
+        }
+        Err(f) => Err((f.body, f.exit)),
     }
 }
 
@@ -1192,5 +1393,20 @@ mod tests {
         let mut headers = HashMap::new();
         headers.insert("cookie".into(), "other=1".into());
         assert!(session_from_cookie(&headers).is_none());
+    }
+
+    #[test]
+    fn a_poll_without_a_token_is_a_usage_error() {
+        let store = Store::open_in_memory().unwrap();
+        let state = ServerState {
+            store: Arc::new(Mutex::new(store)),
+            password: b"".to_vec(),
+            sessions: Mutex::new(HashMap::new()),
+            cookie_secure: false,
+            tuya_reauth: Mutex::new(None),
+            pending_tuya_qr: Mutex::new(HashMap::new()),
+        };
+        let err = api_tuya_login_poll(&state, "", "").unwrap_err();
+        assert_eq!(err.1.code(), 2);
     }
 }

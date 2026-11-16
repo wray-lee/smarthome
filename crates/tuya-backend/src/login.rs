@@ -68,6 +68,39 @@ pub fn qr_terminal(text: &str) -> Result<String, Failure> {
     Ok(image)
 }
 
+/// The QR code as a compact inline SVG string for the panel.
+///
+/// `qrcode`'s render module is available without default features, so the
+/// modules are stitched by hand: a white background rect for the quiet zone
+/// and one black path of unit rectangles. `viewBox` is in module units (with
+/// a quiet zone of 4 modules per side), `shape-rendering="crispEdges"` keeps
+/// the modules sharp, and the image is labelled for assistive technology.
+pub fn qr_svg(text: &str) -> Result<String, Failure> {
+    let code = qrcode::QrCode::new(text.as_bytes())
+        .map_err(|e| Failure::upstream(format!("could not build the QR code: {e}")))?;
+    const QUIET: u16 = 4;
+    let modules = u16::try_from(code.width()).unwrap_or(0);
+    let side = modules.saturating_add(QUIET * 2);
+    // Empty text yields no modules; refuse rather than emit a blank image.
+    if modules == 0 {
+        return Err(Failure::upstream("could not build the QR code: empty content"));
+    }
+    let mut d = String::new();
+    let colors = code.to_colors();
+    for (i, color) in colors.iter().enumerate() {
+        if *color == qrcode::Color::Dark {
+            let x = (i % modules as usize) as u16;
+            let y = (i / modules as usize) as u16;
+            let dx = x + QUIET;
+            let dy = y + QUIET;
+            d.push_str(&format!("M{dx} {dy}h1v1h-1Z"));
+        }
+    }
+    Ok(format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {side} {side}" shape-rendering="crispEdges" role="img" aria-label="Tuya sign-in QR code"><rect fill="#ffffff" width="{side}" height="{side}"/><path fill="#000000" d="{d}"/></svg>"##
+    ))
+}
+
 /// Ask for a sign-in QR code for the account with `user_code` (shown in the
 /// Smart Life app under Me → Settings → Account and Security → User Code).
 pub fn start_login(cfg: &Config, user_code: &str) -> Result<Pending, Failure> {
@@ -264,5 +297,21 @@ mod tests {
         assert!(image.contains('\u{2580}') || image.contains('\u{2584}'));
         // No escape sequences: this goes to stderr as plain text.
         assert!(!image.contains('\u{1b}'));
+    }
+
+    #[test]
+    fn the_qr_renders_as_inline_svg_without_scripts() {
+        let svg = qr_svg(&qr_payload("abc123")).unwrap();
+        assert!(svg.starts_with("<svg"), "{svg}");
+        assert!(svg.contains("xmlns=\"http://www.w3.org/2000/svg\""), "{svg}");
+        assert!(svg.contains("viewBox="), "{svg}");
+        assert!(svg.contains("shape-rendering=\"crispEdges\""), "{svg}");
+        assert!(svg.contains("role=\"img\""), "{svg}");
+        assert!(svg.contains("aria-label=\"Tuya sign-in QR code\""), "{svg}");
+        assert!(svg.contains("<rect fill=\"#ffffff\""), "{svg}");
+        assert!(svg.contains("<path fill=\"#000000\" d=\""), "{svg}");
+        assert!(!svg.contains("<script"), "{svg}");
+        assert!(!svg.contains('\u{1b}'), "{svg}");
+        assert!(svg.ends_with("</svg>"), "{svg}");
     }
 }

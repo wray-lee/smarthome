@@ -8,7 +8,7 @@
 :root{color-scheme:light dark;--fg:#111418;--muted:#3d4754;--bg:#ffffff;--card:#f4f6f8;--line:#767676;--accent:#0b57d0;--accent-fg:#ffffff;--ok:#0e6b2e;--warn-bg:#fdf0d5;--warn-fg:#1a1a1a;--err-bg:#fdecea;--err-fg:#1a1a1a;--focus:#0b57d0;--radius:8px}
 @media (prefers-color-scheme:dark){:root{--fg:#eceff3;--muted:#c3ccd7;--bg:#15181c;--card:#1e2329;--line:#9aa7b8;--accent:#7ab5ff;--accent-fg:#0a1f3f;--ok:#7ce2a3;--warn-bg:#3a2d10;--warn-fg:#ffe9b0;--err-bg:#3d1616;--err-fg:#ffb4b4;--focus:#7ab5ff}}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding:0 1rem 3rem}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding:0 1rem 3rem;overflow-wrap:anywhere}
 .wrap{max-width:52rem;margin-inline:auto}
 header{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem 0;border-bottom:1px solid var(--line)}
 h1{font-size:1.5rem;margin:0;margin-inline-end:auto}
@@ -16,24 +16,46 @@ button{font:inherit;min-height:48px;min-width:48px;padding:.625rem 1.25rem;borde
 button.secondary{background:var(--bg);color:var(--accent)}
 button:disabled{opacity:.6;cursor:not-allowed}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0}
+.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 .banner[hidden]{display:none}
+.banner .banner-text{flex:1 1 16rem;min-width:0}
+.banner code{display:block;overflow-wrap:anywhere;word-break:break-word;margin-block:.25rem;padding:.5rem .75rem;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius)}
 .err-box{background:var(--err-bg);color:var(--err-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0}
 .empty-box{border:1px dashed var(--line);border-radius:var(--radius);padding:1.25rem;margin:1rem 0;color:var(--muted)}
 #status-msg{color:var(--muted)}
 ul.devices{list-style:none;margin:1rem 0;padding:0;display:grid;gap:.75rem;grid-template-columns:1fr}
 @media (min-width:40rem){ul.devices{grid-template-columns:1fr 1fr}}
-li.device{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:.375rem}
+li.device{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:.375rem;min-width:0}
 .name{font-weight:700;font-size:1.0625rem}
-.meta{color:var(--muted);font-size:.9375rem}
+.meta{color:var(--muted);font-size:.9375rem;margin:0;overflow-wrap:anywhere;word-break:break-word}
 .badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-block:.25rem}
 .badge{display:inline-block;border:1px solid var(--line);border-radius:var(--radius);padding:.125rem .5rem;font-size:.875rem;font-weight:600}
 .badge.ok{color:var(--ok)}
-.state{font-weight:600}
-.controls{margin-top:auto;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
-dialog:modal{overscroll-behavior:contain;max-width:min(28rem,92vw);border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--fg);padding:1.5rem}
+.state{font-weight:600;margin:0}
+.sync-note{color:var(--muted);font-weight:600}
+.err-text{color:var(--err-fg);font-weight:600;margin:0}
+.controls{margin-top:auto;display:flex;flex-direction:column;gap:.75rem;align-items:stretch;min-width:0}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:.125rem;min-width:0}
+.field-head{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap}
+.field-head label{font-weight:600}
+.val{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.readonly{border:1px solid var(--line);border-radius:var(--radius);padding:.5rem .75rem;color:var(--muted);margin:0;overflow-wrap:anywhere;word-break:break-word}
+.readonly strong{color:var(--fg)}
+input[type="range"]{accent-color:var(--accent);width:100%;min-height:44px;margin:0;cursor:pointer}
+input[type="range"]:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+select,input[type="number"],input[type="text"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.625rem .75rem;border:1.5px solid var(--line);border-radius:var(--radius);color:var(--fg);background:var(--bg);width:100%}
+.tele{border-top:1px solid var(--line);padding-top:.5rem;margin-top:.25rem;min-width:0}
+.tele h3{font-size:1rem;margin:0 0 .25rem}
+.tele ul{list-style:none;margin:.25rem 0 0;padding:0;display:grid;gap:.25rem}
+.tele li{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;overflow-wrap:anywhere}
+.tele .tval{font-weight:700;font-variant-numeric:tabular-nums}
+.tele .tlabel{color:var(--muted)}
+dialog:modal{overscroll-behavior:contain;max-width:min(30rem,92vw);border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--fg);padding:1.5rem}
 dialog::backdrop{overflow:hidden;overscroll-behavior:contain;background:rgb(0 0 0 / .55)}
 dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem;flex-wrap:wrap}
+.qr-box{background:#ffffff;border:2px solid #111418;border-radius:var(--radius);padding:1rem;min-height:140px;display:flex;align-items:center;justify-content:center;overflow:auto;color:#111418}
+.qr-box svg{max-width:100%;height:auto}
 .visually-hidden{position:absolute !important;clip-path:inset(50%) !important;overflow:hidden !important;width:1px !important;height:1px !important;margin:-1px !important;padding:0 !important;border:0 !important;white-space:nowrap !important}
 @media (max-width:22.5rem){body{padding:0 .75rem 3rem}header{gap:.5rem}button{padding:.625rem 1rem}}
 </style>
@@ -46,7 +68,7 @@ dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25
 <button type="button" id="signout" class="secondary">Sign out</button>
 </header>
 <main>
-<p class="banner" id="backend-banner" aria-live="polite" hidden></p>
+<div class="banner" id="backend-banner" aria-live="polite" hidden></div>
 <p id="status-msg" role="status" aria-live="polite"></p>
 <section aria-labelledby="list-heading">
 <h2 id="list-heading" style="font-size:1.25rem">Devices</h2>
@@ -62,9 +84,35 @@ dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25
 <button type="button" id="confirm-ok">Confirm</button>
 </div>
 </dialog>
+<dialog id="qr-dialog" aria-labelledby="qr-title">
+<h2 id="qr-title" style="margin:0 0 .5rem;font-size:1.125rem">Sign in to Tuya</h2>
+<p id="qr-hint" class="meta" style="margin:0 0 .75rem"></p>
+<div class="field">
+<label for="qr-code">User code (optional)</label>
+<input id="qr-code" name="user_code" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done">
+</div>
+<div class="actions" style="justify-content:flex-start;margin-top:.75rem">
+<button type="button" id="qr-generate">Generate QR code</button>
+<button type="button" id="qr-close" class="secondary">Close</button>
+</div>
+<p id="qr-status" role="status" aria-live="polite" style="margin:.75rem 0 0"></p>
+<p id="qr-err" class="err-text" role="alert" hidden></p>
+<div class="qr-box" id="qr-box" aria-label="QR code" style="margin-top:.75rem">No QR code yet.</div>
+<div class="actions" id="qr-retry-wrap" hidden>
+<button type="button" id="qr-retry">Retry</button>
+</div>
+</dialog>
 <script>
 "use strict";
 var $=function(id){return document.getElementById(id);};
+var POLL_MS=10000;
+var uidSeq=0;
+function uid(prefix){uidSeq+=1;return prefix+uidSeq;}
+function isVisible(){return document.visibilityState==="visible"&&!document.hidden;}
+function errText(j){if(!j||!j.error)return "Request failed";var e=j.error;if(e.message)return e.message;return e.code||"Request failed";}
+function errCode(j){return (j&&j.error&&j.error.code)||"";}
+function isReauth(j,status){return status===424||errCode(j)==="reauth_required";}
+
 var dialog=$("confirm-dialog");
 var pending=null;
 function confirmed(cb){pending=cb;$("confirm-ok").textContent="Confirm";dialog.showModal();}
@@ -72,18 +120,162 @@ dialog.addEventListener("cancel",function(){pending=null;});
 dialog.addEventListener("close",function(){pending=null;});
 $("confirm-cancel").addEventListener("click",function(){dialog.close();});
 $("confirm-ok").addEventListener("click",function(){var cb=pending;pending=null;dialog.close();if(cb)cb();});
+function confirmAction(title,text,okLabel,cb){
+  $("confirm-title").textContent=title;
+  $("confirm-text").textContent=text;
+  $("confirm-ok").textContent=okLabel;
+  confirmed(cb);
+}
+
+var tuyaUserCodeConfigured=false;
+function clearBanner(){var b=$("backend-banner");b.textContent="";b.innerHTML="";b.hidden=true;}
+function makeBtn(text,secondary,handler){
+  var b=document.createElement("button");b.type="button";b.textContent=text;
+  if(secondary)b.className="secondary";
+  b.addEventListener("click",handler);
+  return b;
+}
+function renderTuyaReauth(){
+  var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+  var t=document.createElement("span");t.className="banner-text";
+  t.textContent="Tuya needs you to sign in again. Open your Smart Life app on your phone, then sign in here with the QR code.";
+  b.appendChild(t);
+  b.appendChild(makeBtn("Sign in to Tuya (QR)",false,function(){openQr();}));
+}
+function renderGhReauth(){
+  var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+  var t=document.createElement("span");t.className="banner-text";
+  t.textContent="Google Home needs you to sign in again in a browser to get a fresh oauth_token. This cannot be finished in this panel. Run this command, then press Refresh:";
+  b.appendChild(t);
+  var c1=document.createElement("code");c1.textContent="home gh login --email <your-email>";b.appendChild(c1);
+  var note=document.createElement("span");note.className="banner-text";
+  note.textContent="If this panel runs in a container, run: ";
+  b.appendChild(note);
+  var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";b.appendChild(c2);
+  b.appendChild(makeBtn("Refresh",true,function(){load();}));
+}
+function renderReauthBanner(backend){
+  if(backend==="tuya")renderTuyaReauth();else renderGhReauth();
+}
+function bannerFor(data,statusData){
+  var tuyaStatus=statusData&&statusData.tuya&&statusData.tuya.status;
+  var tuyaErr=data&&data.tuya_error;
+  var ghErr=data&&data.google_home_error;
+  var tuyaReauth=tuyaStatus==="reauth_required"||(tuyaErr&&tuyaErr.error&&tuyaErr.error.code==="reauth_required");
+  var ghReauth=ghErr&&ghErr.error&&ghErr.error.code==="reauth_required";
+  if(tuyaReauth&&ghReauth){
+    var b=$("backend-banner");b.innerHTML="";b.hidden=false;
+    var t=document.createElement("span");t.className="banner-text";
+    t.textContent="Both backends need you to sign in again. Tuya uses the QR code below. Google Home needs a browser sign-in, see the command after you fix Tuya.";
+    b.appendChild(t);
+    b.appendChild(makeBtn("Sign in to Tuya (QR)",false,function(){openQr();}));
+    return;
+  }
+  if(tuyaReauth){renderTuyaReauth();return;}
+  if(ghReauth){renderGhReauth();return;}
+  var parts=[];
+  ["google_home","tuya"].forEach(function(bk){
+    var e=data&&data[bk+"_error"];
+    if(e&&e.error){
+      var name=bk==="google_home"?"Google Home":"Tuya";
+      parts.push(name+": "+(e.error.code||"error")+".");
+    }
+  });
+  if(tuyaStatus&&tuyaStatus!=="ok")parts.push("Tuya: "+tuyaStatus+".");
+  var banner=$("backend-banner");
+  if(parts.length){banner.innerHTML="";var t=document.createElement("span");t.className="banner-text";t.textContent=parts.join(" ");banner.appendChild(t);banner.hidden=false;}
+  else{clearBanner();}
+}
+
+var qrDialog=$("qr-dialog");
+var qrPolling=false;
+var qrTimer=null;
+function qrMsg(m){$("qr-status").textContent=m;}
+function qrShowErr(m){
+  var e=$("qr-err");e.textContent=m;e.hidden=false;
+  $("qr-retry-wrap").hidden=false;
+}
+function qrClearErr(){var e=$("qr-err");e.textContent="";e.hidden=true;$("qr-retry-wrap").hidden=true;}
+function openQr(){
+  qrClearErr();
+  $("qr-box").textContent="No QR code yet.";
+  $("qr-hint").textContent=tuyaUserCodeConfigured?
+    "The server already has a user code configured, so you can leave this field empty. If you need it, find it in Smart Life app, then Me, Settings, Account and Security, User Code.":
+    "Optional. Leave empty if the server already has a user code. To find yours, open Smart Life app, then Me, Settings, Account and Security, User Code.";
+  qrMsg("Enter your code if needed, then press Generate QR code.");
+  if(!qrDialog.open)qrDialog.showModal();
+  $("qr-code").focus();
+}
+function stopQrPoll(){qrPolling=false;if(qrTimer){clearTimeout(qrTimer);qrTimer=null;}}
+qrDialog.addEventListener("close",function(){stopQrPoll();});
+$("qr-close").addEventListener("click",function(){qrDialog.close();});
+$("qr-generate").addEventListener("click",function(){startQrLogin();});
+$("qr-retry").addEventListener("click",function(){startQrLogin();});
+function startQrLogin(){
+  stopQrPoll();qrClearErr();
+  var code=$("qr-code").value.trim();
+  qrMsg("Loading. Generating QR code...");
+  var body=new URLSearchParams();
+  if(code)body.set("user_code",code);
+  fetch("/api/tuya/login/start",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
+  .then(function(r){return r.json().then(function(j){return [r,j];});})
+  .then(function(pair){
+    var status=pair[0].status;var j=pair[1];
+    if(isReauth(j,status)){qrShowErr("Tuya sign-in failed: "+errText(j));qrMsg("Try Again.");return;}
+    if(j.error){qrShowErr("Could not start Tuya sign-in: "+errText(j));qrMsg("Try Again.");return;}
+    var d=j.data||{};
+    var svg=d.qr_svg;
+    if(typeof svg!=="string"||!svg){qrShowErr("The server answered without a QR code. Try Again.");qrMsg("Try Again.");return;}
+    $("qr-box").innerHTML=svg;
+    qrMsg("Scan the QR code with the Smart Life app. Waiting for the scan...");
+    pollQr(d.token,code);
+  })
+  .catch(function(e){qrShowErr("Network error: "+e.message);qrMsg("Try Again.");});
+}
+function pollQr(token,code){
+  qrPolling=true;
+  function tick(){
+    if(!qrPolling||!qrDialog.open)return;
+    if(!isVisible()){qrTimer=setTimeout(tick,2000);return;}
+    var body=new URLSearchParams({token:token||""});
+    if(code)body.set("user_code",code);
+    fetch("/api/tuya/login/poll",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
+    .then(function(r){return r.json().then(function(j){return [r,j];});})
+    .then(function(pair){
+      if(!qrPolling||!qrDialog.open)return;
+      var status=pair[0].status;var j=pair[1];
+      if(j.error){stopQrPoll();qrShowErr("Polling failed: "+errText(j));qrMsg("Try Again.");return;}
+      var d=j.data||{};
+      if(d.status==="authenticated"){
+        stopQrPoll();
+        qrMsg("Tuya sign-in restored. Refreshing devices...");
+        load();
+        return;
+      }
+      qrMsg("Waiting for the scan... (pending)");
+      qrTimer=setTimeout(tick,2000);
+    })
+    .catch(function(e){
+      if(!qrPolling||!qrDialog.open)return;
+      qrMsg("Waiting for the scan... (network retry)");
+      qrTimer=setTimeout(tick,2000);
+    });
+  }
+  tick();
+}
+
 function rowsFor(devices,data){
   var protectedList=(data&&data.protected)||[];
   var list=[];
   (devices.google_home||[]).forEach(function(d){
     var key=(d.backend||"google_home")+":"+d.id;
     var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
-    list.push({backend:"google_home",label:"Google Home",id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind});
+    list.push({backend:"google_home",label:"Google Home",id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind,_seq:0});
   });
   (devices.tuya||[]).forEach(function(d){
     var key=(d.backend||"tuya")+":"+d.id;
     var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
-    list.push({backend:"tuya",label:"Tuya",id:d.id,name:d.name,room:null,traits:[],isProtected:isP,online:d.online,category:d.category});
+    list.push({backend:"tuya",label:"Tuya",id:d.id,name:d.name,room:null,traits:[],isProtected:isP,online:d.online,category:d.category,_seq:0});
   });
   return list;
 }
@@ -104,7 +296,7 @@ function renderRows(rows){
     li.className="device";
     var head=document.createElement("div");
     head.className="name";
-    head.textContent=dev.name+ (dev.room?" ("+dev.room+")":"");
+    head.textContent=dev.name+(dev.room?" ("+dev.room+")":"");
     li.appendChild(head);
     var badges=document.createElement("div");
     badges.className="badges";
@@ -118,183 +310,27 @@ function renderRows(rows){
     li.appendChild(meta);
     var state=document.createElement("p");
     state.className="state";
-    state.textContent="State: checking...";
-    state.dataset.device=dev.backend+":"+dev.id;
+    state.textContent="Loading state...";
     li.appendChild(state);
+    var err=document.createElement("p");
+    err.className="err-text";
+    err.setAttribute("role","alert");
+    err.hidden=true;
+    li.appendChild(err);
     var controls=document.createElement("div");
     controls.className="controls";
     li.appendChild(controls);
+    var tele=null;
+    if(dev.backend==="tuya"){
+      tele=document.createElement("div");
+      tele.className="tele";
+      li.appendChild(tele);
+    }
     ul.appendChild(li);
-    dev._stateEl=state;dev._controlsEl=controls;
+    dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;
   });
   slot.appendChild(ul);
   rows.forEach(function(dev){fetchState(dev);});
-}
-function errText(j){return (j&&j.error&&j.error.message)||("Request failed");}
-
-function fetchState(dev){
-  var path=dev.backend==="google_home"?("/api/gh/get?device="+encodeURIComponent(dev.id)):("/api/tuya/get?device="+encodeURIComponent(dev.id));
-  fetch(path,{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});}).then(function(pair){
-    var j=pair[1];var status=pair[0].status;
-    if(j.error){dev._stateEl.textContent="State: "+errText(j);dev._online=false;buildControl(dev,null);return;}
-    var state="State: unknown";
-    if(dev.backend==="google_home"){
-      var t=j.data.traits||{};
-      dev._online=t.deviceStatus?t.deviceStatus.online:j.data.online;
-      if(t.onOff&&typeof t.onOff.on==="boolean")state="State: "+(t.onOff.on?"on":"off");
-      else if(t.lockUnlock)state="State: "+(t.lockUnlock.isLocked?"locked":"unlocked");
-      else if(t.armDisarm)state="State: "+(t.armDisarm.isArmed?"armed":"disarmed");
-      else state="State: online";
-      dev._state=j.data;
-    }else{
-      dev._online=j.data.online;
-      var pts=j.data.data_points||[];
-      var sw=pts.filter(function(p){return p.code==="switch_1";})[0];
-      if(sw)state="State: "+(sw.value?"on":"off");
-      else state="State: online";
-      dev._state=j.data;
-    }
-    dev._stateEl.textContent=state;
-    buildControl(dev,j.data);
-  }).catch(function(e){dev._stateEl.textContent="State: "+e.message;buildControl(dev,null);});
-}
-
-function buildControl(dev,data){
-  var wrap=dev._controlsEl;wrap.textContent="";
-  if(dev.isProtected){
-    var p=document.createElement("p");p.className="meta";p.textContent="Protected. No control.";wrap.appendChild(p);return;
-  }
-  if(dev._online===false){
-    var b=document.createElement("button");b.type="button";b.textContent="Turn on";b.disabled=true;b.setAttribute("aria-disabled","true");
-    b.title="Offline";b.setAttribute("aria-label","Turn on "+dev.name+" (offline)");
-    wrap.appendChild(b);
-    var n=document.createElement("span");n.className="meta";n.textContent="Offline. Connect the device first.";wrap.appendChild(n);
-    return;
-  }
-  if(dev.backend==="google_home"){
-    var hasOnOff=(dev.traits||[]).some(function(t){return t.indexOf("OnOff")!==-1;});
-    var hasLock=(dev.traits||[]).some(function(t){return t.indexOf("LockUnlock")!==-1;});
-    var hasArm=(dev.traits||[]).some(function(t){return t.indexOf("ArmDisarm")!==-1;});
-    var isOn=null;
-    if(data&&data.traits&&data.traits.onOff) isOn=data.traits.onOff.on;
-    if(hasOnOff){
-      var onBtn=document.createElement("button");onBtn.type="button";
-      onBtn.textContent=isOn===true?"Turn off":"Turn on";
-      onBtn.setAttribute("aria-pressed",isOn===true?"true":"false");
-      onBtn.setAttribute("aria-label",(isOn===true?"Turn off ":"Turn on ")+dev.name);
-      onBtn.addEventListener("click",function(){ghSet(dev,"onOff",!(isOn===true));});
-      wrap.appendChild(onBtn);
-    }
-    if(hasLock){
-      var isLocked=data&&data.traits&&data.traits.lockUnlock?data.traits.lockUnlock.isLocked:null;
-      var lockBtn=document.createElement("button");lockBtn.type="button";lockBtn.className="secondary";
-      lockBtn.textContent=isLocked?"Unlock":"Lock";
-      lockBtn.setAttribute("aria-label",(isLocked?"Unlock ":"Lock ")+dev.name);
-      lockBtn.disabled=dev._online===false;
-      lockBtn.addEventListener("click",function(){
-        if(isLocked){
-          $("confirm-text").textContent="Unlock "+dev.name+"? This is a Sensitive Action. Confirm to send unlock.";
-          $("confirm-ok").textContent="Unlock";
-          confirmed(function(){ghSet(dev,"lockUnlock.isLocked",false,true);});
-        }else{
-          ghSet(dev,"lockUnlock.isLocked",true);
-        }
-      });
-      wrap.appendChild(lockBtn);
-    }
-    if(hasArm){
-      var isArmed=data&&data.traits&&data.traits.armDisarm?data.traits.armDisarm.isArmed:null;
-      var armBtn=document.createElement("button");armBtn.type="button";armBtn.className="secondary";
-      armBtn.textContent=isArmed?"Disarm":"Arm";
-      armBtn.setAttribute("aria-label",(isArmed?"Disarm ":"Arm ")+dev.name);
-      armBtn.disabled=dev._online===false;
-      armBtn.addEventListener("click",function(){
-        if(isArmed){
-          $("confirm-text").textContent="Disarm "+dev.name+"? This is a Sensitive Action. Confirm to send disarm.";
-          $("confirm-ok").textContent="Disarm";
-          confirmed(function(){ghSet(dev,"armDisarm.isArmed",false,true);});
-        }else{
-          ghSet(dev,"armDisarm.isArmed",true);
-        }
-      });
-      wrap.appendChild(armBtn);
-    }
-    if(!hasOnOff&&!hasLock&&!hasArm){
-      var note=document.createElement("p");note.className="meta";note.textContent="No on/off trait.";wrap.appendChild(note);
-    }
-  }else{
-    var isOnT=false;
-    if(data){var pts=data.data_points||[];var sw=pts.filter(function(p){return p.code==="switch_1";})[0];isOnT=sw?!!sw.value:false;}
-    var tBtn=document.createElement("button");tBtn.type="button";
-    tBtn.textContent=isOnT?"Turn off":"Turn on";
-    tBtn.setAttribute("aria-pressed",isOnT?"true":"false");
-    tBtn.setAttribute("aria-label",(isOnT?"Turn off ":"Turn on ")+dev.name);
-    tBtn.disabled=dev._online===false;
-    tBtn.addEventListener("click",function(){tuyaSet(dev,!isOnT);});
-    wrap.appendChild(tBtn);
-  }
-}
-
-function ghSet(dev,trait,val,confirm){
-  var body=new URLSearchParams({device:dev.id,trait:trait,value:String(val)});
-  if(confirm)body.set("confirm","true");
-  dev._stateEl.textContent="Sending...";
-  fetch("/api/gh/set",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
-  .then(function(r){return r.json();}).then(function(j){
-    if(j.error){dev._stateEl.textContent="Error: "+errText(j);return;}
-    fetchState(dev);
-  }).catch(function(e){dev._stateEl.textContent="Error: "+e.message;});
-}
-function tuyaSet(dev,onVal){
-  dev._stateEl.textContent="Sending...";
-  var path=onVal?"/api/tuya/on":"/api/tuya/off";
-  fetch(path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({device:dev.id}).toString()})
-  .then(function(r){return r.json();}).then(function(j){
-    if(j.error){dev._stateEl.textContent="Error: "+errText(j);return;}
-    fetchState(dev);
-  }).catch(function(e){dev._stateEl.textContent="Error: "+e.message;});
-}
-
-function bannerFor(data,statusData){
-  var parts=[];
-  var tuyaStatus=statusData&&statusData.tuya&&statusData.tuya.status;
-  if(tuyaStatus==="reauth_required"){
-    var msg=(statusData.tuya.message||"reauth_required");
-    parts.push("Tuya: reauth_required. "+msg+". Run home tuya login.");
-  }
-  ["google_home","tuya"].forEach(function(b){
-    var e=data[b+"_error"];
-    if(e&&e.error){
-      var code=e.error.code||"";
-      var name=b==="google_home"?"Google Home":"Tuya";
-      var cmd=b==="google_home"?"Run home gh login":"Run home tuya login";
-      parts.push(name+": "+code+". "+cmd+".");
-    }
-  });
-  var banner=$("backend-banner");
-  if(parts.length){banner.textContent=parts.join(" ");banner.hidden=false;}
-  else{banner.textContent="";banner.hidden=true;}
-}
-
-function load(){
-  var msg=$("status-msg");
-  msg.textContent="Loading devices...";
-  var devicesPromise=fetch("/api/devices",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
-  var statusPromise=fetch("/api/status",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
-  Promise.all([devicesPromise,statusPromise]).then(function(pair){
-    var rJ=pair[0];var sJ=pair[1];
-    if(rJ[0].status===401||sJ[0].status===401){location.href="/login";return;}
-    var j=rJ[1];var sj=sJ[1];
-    if(j.error){showError(errText(j));return;}
-    var data=j.data||{};
-    var statusData=sj&&sj.data?sj.data:null;
-    bannerFor(data,statusData);
-    if(data.google_home_error||data.tuya_error){
-      if(!data.google_home&&!data.tuya){showError(data.google_home_error?errText(data.google_home_error):errText(data.tuya_error));return;}
-    }
-    msg.textContent="Updated.";
-    renderRows(rowsFor(data,data));
-  }).catch(function(e){showError(e.message);});
 }
 function showError(text){
   var slot=$("list-slot");slot.textContent="";
@@ -302,17 +338,473 @@ function showError(text){
   box.textContent="Error: "+text;
   var btn=document.createElement("button");btn.type="button";btn.textContent="Retry";
   btn.style.marginTop="1rem";
-  btn.addEventListener("click",load);
+  btn.addEventListener("click",function(){load();});
   box.appendChild(document.createElement("br"));
   box.appendChild(btn);
   slot.appendChild(box);
   $("status-msg").textContent="";
 }
-$("refresh").addEventListener("click",load);
+
+function ghTraits(dev){return dev._state&&dev._state.traits?dev._state.traits:{};}
+function tuyaPts(dev){return dev._state&&dev._state.data_points?dev._state.data_points:[];}
+function isCalib(code){return code.toLowerCase().indexOf("calib")!==-1;}
+function stateSummary(dev,data){
+  if(dev._online===false)return "State: offline";
+  if(!data)return "State: unknown";
+  if(dev.backend==="google_home"){
+    var t=data.traits||{};
+    if(t.onOff&&typeof t.onOff.on==="boolean")return "State: "+(t.onOff.on?"on":"off");
+    if(t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean")return "State: "+(t.lockUnlock.isLocked?"locked":"unlocked");
+    if(t.armDisarm&&typeof t.armDisarm.isArmed==="boolean")return "State: "+(t.armDisarm.isArmed?"armed":"disarmed");
+    if(t.brightness&&typeof t.brightness.brightness==="number")return "State: brightness "+t.brightness.brightness+"%";
+    if(t.volume&&typeof t.volume.currentVolume==="number")return "State: volume "+t.volume.currentVolume+"%";
+    return "State: online";
+  }
+  var pts=data.data_points||[];
+  var sw=null;
+  for(var i=0;i<pts.length;i++){if(pts[i].code==="switch_1"){sw=pts[i];break;}}
+  if(sw)return "State: "+(sw.value?"on":"off");
+  return "State: online";
+}
+function snapshot(dev){
+  try{return JSON.parse(JSON.stringify(dev._state||null));}catch(e){return dev._state||null;}
+}
+function rollback(dev,snap,msg){
+  dev._state=snap;
+  var t=ghTraits(dev);
+  if(dev.backend==="google_home"&&t.deviceStatus&&typeof t.deviceStatus.online==="boolean")dev._online=t.deviceStatus.online;
+  if(dev.backend!=="google_home"&&snap&&typeof snap.online==="boolean")dev._online=snap.online;
+  buildControl(dev,snap);
+  dev._stateEl.textContent=stateSummary(dev,snap)+" (change failed)";
+  dev._errEl.textContent="Error: "+msg;
+  dev._errEl.hidden=false;
+}
+function setSyncing(dev){
+  dev._errEl.textContent="";dev._errEl.hidden=true;
+  var s=stateSummary(dev,dev._state);
+  dev._stateEl.innerHTML="";
+  dev._stateEl.appendChild(document.createTextNode(s+" "));
+  var n=document.createElement("span");n.className="sync-note";n.textContent="Syncing...";
+  dev._stateEl.appendChild(n);
+}
+function optimistic(dev,mutate,postFn){
+  var snap=snapshot(dev);
+  dev._seq+=1;
+  if(mutate&&dev._state)mutate(dev._state);
+  setSyncing(dev);
+  buildControl(dev,dev._state);
+  postFn().then(function(pair){
+    var status=pair[0];var j=pair[1];
+    if(j&&j.error){
+      if(isReauth(j,status))renderReauthBanner(dev.backend);
+      rollback(dev,snap,errText(j));
+      return;
+    }
+    fetchState(dev);
+  }).catch(function(e){rollback(dev,snap,e.message);});
+}
+function postForm(path,body){
+  return fetch(path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
+  .then(function(r){return r.json().then(function(j){return [r.status,j];}).catch(function(){return [r.status,{error:{message:"Bad response"}}];});});
+}
+function ghSetPost(dev,params){
+  var body=new URLSearchParams({device:dev.id});
+  Object.keys(params).forEach(function(k){body.set(k,String(params[k]));});
+  return postForm("/api/gh/set",body);
+}
+function tuyaSetPost(dev,onVal){
+  var path=onVal?"/api/tuya/on":"/api/tuya/off";
+  return postForm(path,new URLSearchParams({device:dev.id}));
+}
+
+function fetchState(dev){
+  var my=++dev._seq;
+  dev._stateEl.textContent="Loading state...";
+  if(dev._teleEl)renderTelemetry(dev,"loading",null);
+  var path=dev.backend==="google_home"?("/api/gh/get?device="+encodeURIComponent(dev.id)):("/api/tuya/get?device="+encodeURIComponent(dev.id));
+  fetch(path,{headers:{"Accept":"application/json"}}).then(function(r){
+    return r.json().then(function(j){return [r,j];}).catch(function(){return [r,{error:{message:"Bad response"}}];});
+  }).then(function(pair){
+    if(my!==dev._seq)return;
+    var r=pair[0];var j=pair[1];
+    if(j&&j.error){
+      if(isReauth(j,r.status))renderReauthBanner(dev.backend);
+      dev._stateEl.textContent="State: "+errText(j);
+      dev._online=false;
+      buildControl(dev,null,j);
+      if(dev._teleEl)renderTelemetry(dev,"error",errText(j));
+      return;
+    }
+    var data=j.data||{};
+    dev._state=data;
+    if(dev.backend==="google_home"){
+      var t=data.traits||{};
+      if(t.deviceStatus&&typeof t.deviceStatus.online==="boolean")dev._online=t.deviceStatus.online;
+      else if(typeof data.online==="boolean")dev._online=data.online;
+    }else{
+      if(typeof data.online==="boolean")dev._online=data.online;
+    }
+    dev._stateEl.textContent=stateSummary(dev,data);
+    buildControl(dev,data);
+    if(dev._teleEl)renderTelemetry(dev,"data",data.telemetry);
+  }).catch(function(e){
+    if(my!==dev._seq)return;
+    dev._stateEl.textContent="State: "+e.message;
+    buildControl(dev,null);
+    if(dev._teleEl)renderTelemetry(dev,"error",e.message);
+  });
+}
+
+function readonlyRow(text){
+  var p=document.createElement("p");p.className="readonly";p.textContent=text;return p;
+}
+function fmtTeleVal(entry){
+  var v=(entry&&typeof entry.value!=="undefined"&&entry.value!==null)?entry.value:(entry?entry.raw:"");
+  var s="";
+  if(typeof v==="number")s=String(Number(v.toFixed(1)));
+  else s=String(v==null?"":v);
+  var u=entry&&entry.unit?String(entry.unit):"";
+  return (s+(u?" "+u:"")).trim()||"Read-only";
+}
+function renderTelemetry(dev,mode,payload){
+  var el=dev._teleEl;if(!el)return;
+  el.textContent="";
+  var h=document.createElement("h3");h.textContent="Telemetry";el.appendChild(h);
+  if(mode==="loading"){
+    var p=document.createElement("p");p.className="meta";p.textContent="Loading telemetry...";el.appendChild(p);return;
+  }
+  if(mode==="error"){
+    var e=document.createElement("p");e.className="err-text";e.setAttribute("role","alert");e.textContent="Telemetry error: "+payload;el.appendChild(e);
+    el.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
+    return;
+  }
+  var tele=payload||{};
+  var keys=Object.keys(tele);
+  if(!keys.length){
+    var q=document.createElement("p");q.className="meta";q.textContent="No telemetry readings reported.";el.appendChild(q);return;
+  }
+  var order=["cur_power","cur_current","cur_voltage","add_ele"];
+  var labels={cur_power:"Power",cur_current:"Current",cur_voltage:"Voltage",add_ele:"Energy"};
+  var ordered=order.filter(function(k){return keys.indexOf(k)!==-1;})
+    .concat(keys.filter(function(k){return order.indexOf(k)===-1;}).sort());
+  var ul=document.createElement("ul");
+  ordered.forEach(function(k){
+    var li=document.createElement("li");
+    var l=document.createElement("span");l.className="tlabel";l.textContent=labels[k]||k;
+    var v=document.createElement("span");v.className="tval";v.textContent=fmtTeleVal(tele[k]);
+    li.appendChild(l);li.appendChild(v);ul.appendChild(li);
+  });
+  el.appendChild(ul);
+}
+function sliderField(dev,labelText,min,max,step,initial,fmt,onSubmit){
+  var wrap=document.createElement("div");wrap.className="field";
+  var head=document.createElement("div");head.className="field-head";
+  var id=uid("slider-");
+  var textNode=document.createElement("label");textNode.htmlFor=id;textNode.textContent=labelText;
+  var out=document.createElement("span");out.className="val";out.textContent=fmt(initial);
+  head.appendChild(textNode);head.appendChild(out);wrap.appendChild(head);
+  var input=document.createElement("input");
+  input.type="range";input.id=id;
+  input.min=String(min);input.max=String(max);input.step=String(step);input.value=String(initial);
+  input.setAttribute("aria-valuetext",fmt(initial));
+  input.addEventListener("input",function(){
+    out.textContent=fmt(Number(input.value));
+    input.setAttribute("aria-valuetext",fmt(Number(input.value)));
+  });
+  input.addEventListener("change",function(){onSubmit(Number(input.value));});
+  wrap.appendChild(input);
+  return wrap;
+}
+function switchButton(dev,labelText,onVal,handler){
+  var b=document.createElement("button");
+  b.type="button";
+  b.className="secondary";
+  b.setAttribute("role","switch");
+  b.setAttribute("aria-checked",onVal?"true":"false");
+  b.setAttribute("aria-label",labelText+" "+dev.name);
+  b.textContent=labelText+": "+(onVal?"On":"Off");
+  b.addEventListener("click",handler);
+  return b;
+}
+function traitKnownName(trait){
+  var t=String(trait);
+  if(t.indexOf("OnOff")!==-1)return "onOff";
+  if(t.indexOf("Brightness")!==-1)return "brightness";
+  if(t.indexOf("ColorSetting")!==-1)return "color";
+  if(t.indexOf("LockUnlock")!==-1)return "lock";
+  if(t.indexOf("ArmDisarm")!==-1)return "arm";
+  if(t.indexOf("Volume")!==-1)return "volume";
+  if(t.indexOf("Color")!==-1)return "color";
+  if(t.indexOf("Temperature")!==-1||t.indexOf("Thermostat")!==-1)return "thermostat";
+  return null;
+}
+function stateValSummary(v){
+  if(v===null||typeof v==="undefined")return "Read-only";
+  if(typeof v!=="object")return String(v);
+  var parts=[];
+  Object.keys(v).slice(0,4).forEach(function(k){
+    var x=v[k];
+    parts.push(k+"="+(typeof x==="object"?JSON.stringify(x):String(x)));
+  });
+  return parts.join(", ")||"Read-only";
+}
+function findTraitState(t,declaredTrait){
+  var short=String(declaredTrait).split(".").pop()||String(declaredTrait);
+  var cands=[short.charAt(0).toLowerCase()+short.slice(1),short.toLowerCase(),short];
+  for(var i=0;i<cands.length;i++){if(t[cands[i]]!==undefined)return [cands[i],t[cands[i]]];}
+  return [short,null];
+}
+
+function buildControl(dev,data){
+  var wrap=dev._controlsEl;wrap.textContent="";
+  if(dev.isProtected){
+    wrap.appendChild(readonlyRow("protected"));
+    wrap.appendChild(readonlyRow("Protected. Read-only, controls disabled."));
+    return;
+  }
+  if(!data){
+    wrap.appendChild(readonlyRow("Could not load device state."));
+    wrap.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
+    return;
+  }
+  if(dev._online===false){
+    var dis=document.createElement("button");
+    dis.type="button";dis.className="secondary";dis.disabled=true;
+    dis.setAttribute("aria-disabled","true");
+    dis.textContent="Power (disabled, device offline)";
+    dis.title="Offline";
+    dis.setAttribute("aria-label","Power control for "+dev.name+" (offline)");
+    wrap.appendChild(dis);
+    wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
+    return;
+  }
+  if(dev.backend==="google_home"){
+    var traits=dev.traits||[];
+    var known={};
+    traits.forEach(function(t){var k=traitKnownName(t);if(k)known[k]=true;});
+    var t=ghTraits(dev);
+    if(known.onOff){
+      var isOn=t.onOff&&typeof t.onOff.on==="boolean"?t.onOff.on:false;
+      wrap.appendChild(switchButton(dev,"Power",isOn,function(){
+        var next=!isOn;
+        optimistic(dev,function(st){
+          if(!st.traits)st.traits={};if(!st.traits.onOff)st.traits.onOff={};
+          st.traits.onOff.on=next;
+        },function(){return ghSetPost(dev,{trait:"onOff",value:next});});
+      }));
+    }
+    if(known.brightness){
+      var b0=t.brightness&&typeof t.brightness.brightness==="number"?t.brightness.brightness:0;
+      wrap.appendChild(sliderField(dev,"Brightness",0,100,1,b0,function(v){
+        return v+"%";
+      },function(v){
+        optimistic(dev,function(st){
+          if(!st.traits)st.traits={};if(!st.traits.brightness)st.traits.brightness={};
+          st.traits.brightness.brightness=v;
+        },function(){return ghSetPost(dev,{trait:"brightness",value:v});});
+      }));
+    }
+    if(known.color){
+      var c0=4200;
+      var cs=t.colorSetting||t.color;
+      if(cs){if(typeof cs.temperatureK==="number")c0=cs.temperatureK;else if(typeof cs.colorTemperature==="number")c0=cs.colorTemperature;}
+      wrap.appendChild(sliderField(dev,"Color temperature",1000,10000,100,c0,function(v){
+        return v+" K";
+      },function(v){
+        optimistic(dev,function(st){
+          if(!st.traits)st.traits={};
+          if(!st.traits.colorSetting)st.traits.colorSetting={};
+          st.traits.colorSetting.temperatureK=v;
+        },function(){return ghSetPost(dev,{trait:"color.colorTemperature",value:v});});
+      }));
+    }
+    if(known.thermostat){
+      var th=t.temperatureSetting||t.thermostat||t.temperature||{};
+      var mode=th.thermostatMode||th.mode||"auto";
+      var setpoint=th.thermostatSetpoint;
+      if(typeof setpoint!=="number")setpoint=th.setpoint;
+      if(typeof setpoint!=="number")setpoint=th.thermostatSetpointHigh;
+      if(typeof setpoint!=="number")setpoint=21;
+      var modes=["off","heat","cool","heatcool","auto"];
+      var row=document.createElement("div");row.className="row";
+      var f1=document.createElement("div");f1.className="field";f1.style.flex="1 1 10rem";
+      var idM=uid("mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent="Mode";f1.appendChild(lm);
+      var sel=document.createElement("select");sel.id=idM;
+      modes.forEach(function(m){
+        var o=document.createElement("option");o.value=m;o.textContent=m;sel.appendChild(o);
+      });
+      if(modes.indexOf(mode)===-1){
+        var o2=document.createElement("option");o2.value=mode;o2.textContent=mode;
+        sel.appendChild(o2);
+      }
+      sel.value=mode;
+      f1.appendChild(sel);row.appendChild(f1);
+      var f2=document.createElement("div");f2.className="field";f2.style.flex="1 1 10rem";
+      var idS=uid("setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent="Setpoint (degrees)";f2.appendChild(ls);
+      var num=document.createElement("input");
+      num.type="number";num.id=idS;num.step="0.5";num.min="-20";num.max="60";
+      num.value=String(setpoint);num.setAttribute("inputmode","decimal");
+      f2.appendChild(num);row.appendChild(f2);
+      var apply=document.createElement("button");apply.type="button";apply.textContent="Apply";
+      apply.addEventListener("click",function(){
+        var m=sel.value;var sp=Number(num.value);
+        if(isNaN(sp)){dev._errEl.textContent="Error: Enter a setpoint number.";dev._errEl.hidden=false;return;}
+        optimistic(dev,function(st){
+          if(!st.traits)st.traits={};
+          if(!st.traits.temperatureSetting)st.traits.temperatureSetting={};
+          st.traits.temperatureSetting.thermostatMode=m;
+          st.traits.temperatureSetting.thermostatSetpoint=sp;
+        },function(){return ghSetPost(dev,{trait:"thermostat",value:sp,mode:m,setpoint:sp});});
+      });
+      row.appendChild(apply);
+      wrap.appendChild(row);
+    }
+    if(known.volume){
+      var v0=t.volume&&typeof t.volume.currentVolume==="number"?t.volume.currentVolume:0;
+      wrap.appendChild(sliderField(dev,"Volume",0,100,1,v0,function(v){
+        return v+"%";
+      },function(v){
+        optimistic(dev,function(st){
+          if(!st.traits)st.traits={};if(!st.traits.volume)st.traits.volume={};
+          st.traits.volume.currentVolume=v;
+        },function(){return ghSetPost(dev,{trait:"volume.currentVolume",value:v});});
+      }));
+    }
+    if(known.lock){
+      var isLocked=t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean"?t.lockUnlock.isLocked:null;
+      var lockBtn=document.createElement("button");
+      lockBtn.type="button";lockBtn.className="secondary";
+      lockBtn.textContent=isLocked===true?"Unlock":"Lock";
+      lockBtn.setAttribute("aria-label",(isLocked?"Unlock ":"Lock ")+dev.name);
+      lockBtn.addEventListener("click",function(){
+        if(isLocked===true){
+          confirmAction("Confirm sensitive action","Unlock "+dev.name+"? Confirm to send unlock.","Unlock",function(){
+            optimistic(dev,function(st){
+              if(st.traits&&st.traits.lockUnlock)st.traits.lockUnlock.isLocked=false;
+            },function(){return ghSetPost(dev,{trait:"lockUnlock.isLocked",value:false,confirm:true});});
+          });
+        }else{
+          optimistic(dev,function(st){
+            if(st.traits&&st.traits.lockUnlock)st.traits.lockUnlock.isLocked=true;
+          },function(){return ghSetPost(dev,{trait:"lockUnlock.isLocked",value:true});});
+        }
+      });
+      wrap.appendChild(lockBtn);
+    }
+    if(known.arm){
+      var isArmed=t.armDisarm&&typeof t.armDisarm.isArmed==="boolean"?t.armDisarm.isArmed:null;
+      var armBtn=document.createElement("button");
+      armBtn.type="button";armBtn.className="secondary";
+      armBtn.textContent=isArmed===true?"Disarm":"Arm";
+      armBtn.setAttribute("aria-label",(isArmed?"Disarm ":"Arm ")+dev.name);
+      armBtn.addEventListener("click",function(){
+        if(isArmed===true){
+          confirmAction("Confirm sensitive action","Disarm "+dev.name+"? Confirm to send disarm.","Disarm",function(){
+            optimistic(dev,function(st){
+              if(st.traits&&st.traits.armDisarm)st.traits.armDisarm.isArmed=false;
+            },function(){return ghSetPost(dev,{trait:"armDisarm.isArmed",value:false,confirm:true});});
+          });
+        }else{
+          optimistic(dev,function(st){
+            if(st.traits&&st.traits.armDisarm)st.traits.armDisarm.isArmed=true;
+          },function(){return ghSetPost(dev,{trait:"armDisarm.isArmed",value:true});});
+        }
+      });
+      wrap.appendChild(armBtn);
+    }
+    var renderedKeys=["deviceStatus","onOff","brightness","colorSetting","color","temperatureSetting","thermostat","temperature","volume","lockUnlock","armDisarm"];
+    traits.forEach(function(tr){
+      if(!traitKnownName(tr)){
+        var found=findTraitState(t||{},tr);
+        var short=String(tr).split(".").pop()||String(tr);
+        wrap.appendChild(readonlyRow(short+": "+stateValSummary(found[1])+" (Read-only)"));
+        if(renderedKeys.indexOf(found[0])===-1)renderedKeys.push(found[0]);
+      }
+    });
+    Object.keys(t||{}).forEach(function(k){
+      if(renderedKeys.indexOf(k)===-1){
+        wrap.appendChild(readonlyRow(k+": "+stateValSummary(t[k])+" (Read-only)"));
+      }
+    });
+    if(!Object.keys(known).length&&!traits.length){
+      wrap.appendChild(readonlyRow("No known traits on this device. State shown above is read-only."));
+    }
+  }else{
+    var pts=tuyaPts(dev);
+    var hasSwitch=false;var swVal=false;
+    pts.forEach(function(p){
+      if(p.code==="switch_1"){hasSwitch=true;swVal=!!p.value;}
+    });
+    if(hasSwitch||pts.length===0){
+      wrap.appendChild(switchButton(dev,"Power",swVal,function(){
+        var next=!swVal;
+        optimistic(dev,function(st){
+          var ps=st&&st.data_points?st.data_points:[];
+          var found=false;
+          ps.forEach(function(p){if(p.code==="switch_1"){p.value=next;found=true;}});
+          if(!found)ps.push({code:"switch_1",value:next});
+          if(st)st.data_points=ps;
+        },function(){return tuyaSetPost(dev,next);});
+      }));
+    }
+    pts.forEach(function(p){
+      if(p.code==="switch_1"||isCalib(p.code))return;
+      wrap.appendChild(readonlyRow(p.code+": "+stateValSummary(p.value)+" (Read-only)"));
+    });
+    if(!hasSwitch&&pts.length>0){
+      wrap.appendChild(readonlyRow("No power switch point on this device. Values above are read-only."));
+    }
+  }
+}
+
+var pollTimer=null;
+var lastDone=0;
+var loading=false;
+function schedule(delay){
+  if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}
+  if(!isVisible())return;
+  pollTimer=setTimeout(function(){
+    pollTimer=null;
+    if(isVisible())load();
+  },delay);
+}
+document.addEventListener("visibilitychange",function(){
+  if(!isVisible()){
+    if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}
+    return;
+  }
+  var elapsed=Date.now()-lastDone;
+  if(elapsed>=POLL_MS)schedule(0);
+  else schedule(POLL_MS-elapsed);
+});
+function load(){
+  if(loading)return Promise.resolve();
+  loading=true;
+  var msg=$("status-msg");
+  msg.textContent="Loading devices...";
+  var devicesPromise=fetch("/api/devices",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
+  var statusPromise=fetch("/api/status",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
+  return Promise.all([devicesPromise,statusPromise]).then(function(pair){
+    var rJ=pair[0];var sJ=pair[1];
+    if(rJ[0].status===401||sJ[0].status===401){location.href="/login";loading=false;return;}
+    var j=rJ[1];var sj=sJ[1];
+    if(j&&j.error){showError(errText(j));loading=false;lastDone=Date.now();schedule(POLL_MS);return;}
+    var data=j.data||{};
+    var statusData=sj&&sj.data?sj.data:null;
+    if(statusData&&typeof statusData.tuya_user_code_configured!=="undefined")tuyaUserCodeConfigured=!!statusData.tuya_user_code_configured;
+    bannerFor(data,statusData);
+    msg.textContent="Updated.";
+    renderRows(rowsFor(data,data));
+    loading=false;lastDone=Date.now();schedule(POLL_MS);
+  }).catch(function(e){
+    showError(e.message);
+    loading=false;lastDone=Date.now();schedule(POLL_MS);
+  });
+}
+$("refresh").addEventListener("click",function(){load();});
 $("signout").addEventListener("click",function(){
   fetch("/logout",{method:"POST"}).then(function(){location.href="/login";}).catch(function(){location.href="/login";});
 });
-setInterval(function(){if(!document.hidden)load();},10000);
 load();
 </script>
 </body>

@@ -46,7 +46,7 @@ pub mod sign;
 
 pub use config::Config;
 pub use devices::{Device, KeyChange, Listing};
-pub use login::{login, poll_login, qr_payload, qr_terminal, start_login, Pending};
+pub use login::{login, poll_login, qr_payload, qr_svg, qr_terminal, start_login, Pending};
 pub use session::{Failure, Session, TuyaClient, BACKEND};
 
 use home_store::{ErrorBody, Exit, Store};
