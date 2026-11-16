@@ -30,16 +30,18 @@ Developed and tested in WSL with no Windows toolchain: Arch Linux, user
 `wray`, `cargo` from the distro. `Cargo.lock` is committed, so dependency
 versions are fixed; that does not make the crates themselves available.
 
-This WSL has no outbound network (crates.io and `static.crates.io` are
-unreachable). A clean `cargo build` therefore fails, and the README does not
-pretend otherwise:
+The network here may be available: `curl` probes of
+`https://index.crates.io/config.json` and
+`https://static.crates.io/crates/serde/serde-1.0.0.crate` have returned
+2xx, so an online build can work. The established way to build in this
+environment is still the cached one below, and the README does not pretend
+otherwise:
 
 - with the default `CARGO_HOME` (`~/.cargo`), `cargo build --offline` stops at
-  `no matching package named 'rusqlite' found`; without `--offline` it hangs
-  updating the crates.io index, each attempt waiting 30 s and retrying (still
-  going after 130 s) because `static.crates.io` cannot be reached.
+  `no matching package named 'rusqlite' found` when the crates are absent;
+  a clean `cargo build` without the cache can therefore fail.
 - the working setup points `CARGO_HOME` at the Windows host's cargo cache
-  (read and written from WSL through `/mnt/c`):
+  (read and written from WSL through `/mnt/c`) and builds `--offline`:
 
 ```console
 export CARGO_HOME=/mnt/c/Users/Wray/.cargo
@@ -55,7 +57,8 @@ and cases like `target/` there are easy to commit by accident. The same two
 exports plus `--release` build the binary. To drop the host cache, vendor the
 dependencies (`cargo vendor`) or pre-fill WSL's own registry cache while the
 machine still has a network; until then, those `CARGO_HOME`/`CARGO_TARGET_DIR`
-exports are a prerequisite, not a convenience.
+exports are a prerequisite, not a convenience. Vendor the dependencies when
+the network cannot be trusted; the offline build then needs nothing else.
 
 ## Deploy
 
@@ -333,15 +336,82 @@ non-root `home` user (UID 10001). Build both architectures with
 docker buildx build --platform linux/amd64,linux/arm64 -t home:latest .
 ```
 
-Run the panel with the data directory on a volume and the password in a
-file on that volume, owner `10001` (or `HOME_PASSWORD`):
+That builds a multi-arch image, so the running host picks its own
+architecture. The shipped artifacts (`tmp/dist/`) are the same version
+produced as single-arch `docker save` tarballs instead; use those when no
+build is possible.
+
+### Load the shipped image
+
+Version 0.1.0 ships as `home-0.1.0-amd64.tar` and `home-0.1.0-arm64.tar`
+(`docker save` output), alongside `sha256sums.txt`, `delivery.json` and the
+standalone binaries. Each tar holds one architecture only.
 
 ```console
-docker run -d --name home -p 8080:8080 \
+docker load -i home-0.1.0-amd64.tar   # on an arm64 host: home-0.1.0-arm64.tar
+docker image inspect home:0.1.0       # check Architecture before starting
+```
+
+Loading the wrong tar leaves an image that fails to start with
+`exec format error`; pick the tar that matches `docker info` /
+`uname -m` on the host, and confirm with
+`docker image inspect home:0.1.0` (`Architecture` shows `amd64` or `arm64`).
+
+Create the volume and the password file, then start the panel on the
+loopback:
+
+```console
+docker volume create home-data
+printf '%s\n' 'a long password' | docker run --rm -i -v home-data:/data \
+  --entrypoint sh home:0.1.0 -c 'umask 077; cat > /data/home-password'
+docker run -d --name home -p 127.0.0.1:8080:8080 \
   -v home-data:/data \
   -e HOME_PASSWORD_FILE=/data/home-password \
-  --restart unless-stopped home:latest
+  --restart unless-stopped home:0.1.0
 ```
+
+The container runs as UID 10001, so the file lands on disk owned by 10001
+with mode 600, and the password never appears in argv or in the image. Use
+`-p 127.0.0.1:8080:8080`, never `-p 8080:8080`: the container itself binds
+`0.0.0.0`, so the host-side loopback binding is the only thing keeping the
+panel off the LAN (same rule as the Web Panel section).
+
+Sign both Backends in once, inside the container:
+
+```console
+echo 'aas_et/…' | docker exec -i home home gh login --email you@example.com
+docker exec -it -e HOME_TUYA_USER_CODE=… home home tuya login
+```
+
+The Tuya QR code is printed on stderr; scan it with the Smart Life app, or
+use the Tuya QR dialog in the panel instead (same login). The user code is
+in the app under Me → Settings → Account and Security → User Code.
+
+A new database has nothing protected. Every Device that must stay read-only
+needs an explicit protection before the first write:
+
+```console
+docker exec -i home home protect tuya:<id>
+docker exec -i home home protect gh:<id>
+```
+
+Add one line for every such Device, or copy an existing `home.sqlite`
+(where the protection already lives) into the volume before starting the
+container. A fresh volume holds an empty database with nothing protected.
+
+The container publishes only to `127.0.0.1`. Reach it over Tailscale (or
+another private network); never expose the port directly. If a reverse
+proxy terminates TLS in front of it, set `HOME_COOKIE_SECURE=true` on the
+container so the session cookie carries `Secure`.
+
+Check it answers:
+
+```console
+curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/login   # 200
+```
+
+The whole `/api/` tree needs a login, so an anonymous `GET /api/devices`
+returning 401 is normal, not a failure.
 
 `docker run` here takes no `--secret`; a bind-mounted host file also works
 (`--mount type=bind,src=/path/home-password,dst=/run/secrets/home-password,readonly`
@@ -349,19 +419,4 @@ plus `-e HOME_PASSWORD_FILE=/run/secrets/home-password`) as long as UID 10001
 can read it. Either way the password never lands in argv or the image.
 
 The runtime image sets `HOME_DB=/data/home.sqlite`, `HOME_HOST=0.0.0.0` and
-`HOME_PORT=8080`, so no other configuration is needed. Only publish the port
-where you want the panel reachable: `-p 127.0.0.1:8080:8080` binds the loopback
-instead of every interface.
-
-The Google Home sign-in needs stdin, which has no browser inside the
-container, so run it through the running container (or `--entrypoint`):
-
-```console
-echo 'aas_et/…' | docker exec -i home home gh login --email you@example.com
-```
-
-Before the first write on any new database, re-add the protection:
-`home protect gh:<id>` and `home protect tuya:<id>` for every protected
-Device, or copy an existing `home.sqlite` (where the protection already
-lives on both Backends) into the volume instead. A fresh volume holds an
-empty database with nothing protected.
+`HOME_PORT=8080`, so no other configuration is needed.
