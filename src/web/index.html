@@ -102,6 +102,7 @@ var I18N={
 "telemetry.offline":"Telemetry unavailable while the device is offline.",
 "telemetry.error":"Telemetry error: {detail}",
 "telemetry.none":"No telemetry readings reported.",
+"telemetry.stale":"Updated {time}, may be out of date",
 "telemetry.current":"Current",
 "telemetry.voltage":"Voltage",
 "telemetry.energy":"Energy",
@@ -240,6 +241,7 @@ var I18N={
 "telemetry.offline":"设备离线，暂时无法读取遥测数据。",
 "telemetry.error":"遥测数据出错：{detail}",
 "telemetry.none":"暂无遥测读数。",
+"telemetry.stale":"更新于 {time}，可能已过时",
 "telemetry.current":"电流",
 "telemetry.voltage":"电压",
 "telemetry.energy":"电量",
@@ -378,6 +380,7 @@ var I18N={
 "telemetry.offline":"デバイスがオフラインのため、テレメトリーを取得できません。",
 "telemetry.error":"テレメトリーのエラー：{detail}",
 "telemetry.none":"テレメトリーの値はありません。",
+"telemetry.stale":"{time} に更新、最新でない可能性があります",
 "telemetry.current":"電流",
 "telemetry.voltage":"電圧",
 "telemetry.energy":"電力量",
@@ -581,14 +584,21 @@ li.device:first-child{border-block-start:0}
 .sync-note{color:var(--ink2);font-weight:600}
 .err-text{color:var(--err);font-weight:600;font-size:.875rem;margin:.25rem 0 0}
 .power{display:flex;align-items:baseline;gap:.25rem;margin:.125rem 0}
-.watts{display:inline-block;font-size:clamp(1.75rem,1.2rem + 1.8vw,2.5rem);line-height:1.3;font-weight:600;font-variant-numeric:tabular-nums}
+/* A stable box for a value that changes every poll: digits keep one advance
+width, and the box holds the widest reading it has shown, so 155 and 812 (and
+a four digit load) do not nudge the unit or the row. */
+.watts{display:inline-block;min-inline-size:4ch;font-size:clamp(1.75rem,1.2rem + 1.8vw,2.5rem);line-height:1.3;font-weight:600;font-variant-numeric:tabular-nums}
 .unit{font-size:.9375rem;font-weight:600;color:var(--ink2)}
 .tele{margin-block-start:.375rem;min-inline-size:0}
 .tele h3{margin:0 0 .125rem;font-size:.8125rem;font-weight:600;color:var(--ink2)}
+/* Labelled groups, not a punctuated run: each reading is a small pair that
+wraps on its own at 390 rather than a line of separators. */
 .tele ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.125rem 1rem}
-.tele li{display:flex;gap:.375rem;align-items:baseline;font-size:.875rem}
+/* Flex containers ignore the UA [hidden] rule, so say it here. */
+.tele [hidden]{display:none}
+.tele li{display:flex;gap:.375rem;align-items:baseline;font-size:.875rem;min-inline-size:0}
 .tlabel{color:var(--muted)}
-.tval{font-weight:600;font-variant-numeric:tabular-nums}
+.tval{font-weight:600;font-variant-numeric:tabular-nums;min-inline-size:4ch}
 .note{margin:.125rem 0;font-size:.875rem;color:var(--ink2)}
 .ctrls{display:grid;grid-template-columns:minmax(0,1fr);gap:.5rem;margin-block-start:.375rem;min-inline-size:0}
 @media (min-width:64rem){.ctrls{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -1046,7 +1056,7 @@ function renderRows(rows,rebuild){
     var old=slot._rows;
     rows.forEach(function(now,i){
       now._stateEl=old[i]._stateEl;now._errEl=old[i]._errEl;
-      now._controlsEl=old[i]._controlsEl;now._teleEl=old[i]._teleEl;
+      now._controlsEl=old[i]._controlsEl;now._teleEl=old[i]._teleEl;now._tele=old[i]._tele||null;
       now._switchEl=old[i]._switchEl;now._foldEl=old[i]._foldEl;now._foldBody=old[i]._foldBody;
       // Keep the optimistic sequence so an in-flight read can still win.
       now._seq=old[i]._seq;now._state=old[i]._state;now._online=old[i]._online;
@@ -1130,7 +1140,7 @@ function renderRows(rows,rebuild){
       ctl.appendChild(slotEl);
       li.appendChild(ctl);
       ul.appendChild(li);
-      dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;dev._switchEl=slotEl;dev._foldEl=fold;dev._foldBody=foldBody;
+      dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;dev._tele=null;dev._switchEl=slotEl;dev._foldEl=fold;dev._foldBody=foldBody;
     });
     bay.appendChild(ul);
     enclosure.appendChild(bay);
@@ -1304,59 +1314,101 @@ function fmtTeleVal(entry){
   var u=entry&&entry.unit?unitText(entry.unit):"";
   return (s+(u?" "+u:"")).trim()||t("readonly");
 }
+// Only write a node when its text changes: an identical write still dirties
+// the node and, on a live region, would be announced again.
+function setText(node,s){
+  if(node&&node.textContent!==s)node.textContent=s;
+}
+// Built per call because the panel language can change under a running row.
+function fmtTime(ms){
+  try{return new Intl.DateTimeFormat(LANG,{hour:"2-digit",minute:"2-digit"}).format(new Date(ms));}
+  catch(e){return new Date(ms).toLocaleTimeString();}
+}
+var TELE_ORDER=["cur_current","cur_voltage","add_ele"];
+var TELE_LABEL={cur_current:"telemetry.current",cur_voltage:"telemetry.voltage",add_ele:"telemetry.energy"};
+// The block is built once per row; a poll only rewrites the values that moved,
+// so the nodes keep their identity and the Details fold and focus survive.
+function teleSkeleton(dev){
+  var el=dev._teleEl;
+  var h=document.createElement("h3");h.textContent=t("telemetry");el.appendChild(h);
+  var power=document.createElement("p");power.className="power";power.hidden=true;
+  var w=document.createElement("span");w.className="watts";
+  var u=document.createElement("span");u.className="unit";
+  power.appendChild(w);power.appendChild(u);el.appendChild(power);
+  var list=document.createElement("ul");list.className="secondary";list.hidden=true;
+  var cells={};
+  TELE_ORDER.forEach(function(k){
+    var li=document.createElement("li");li.hidden=true;
+    var l=document.createElement("span");l.className="tlabel";l.textContent=t(TELE_LABEL[k]);
+    var v=document.createElement("span");v.className="tval";
+    li.appendChild(l);li.appendChild(v);list.appendChild(li);
+    cells[k]={li:li,v:v};
+  });
+  el.appendChild(list);
+  var note=document.createElement("p");note.className="note";note.hidden=true;el.appendChild(note);
+  var btn=makeBtn(t("action.retry"),true,function(){fetchState(dev);});
+  btn.hidden=true;el.appendChild(btn);
+  return {power:power,w:w,u:u,list:list,cells:cells,note:note,btn:btn,time:0,has:false,seen:false};
+}
 function renderTelemetry(dev,mode,payload){
   var el=dev._teleEl;if(!el)return;
-  el.textContent="";
-  var h=document.createElement("h3");h.textContent=t("telemetry");el.appendChild(h);
+  var p=dev._tele||(dev._tele=teleSkeleton(dev));
   if(mode==="loading"){
-    var p=document.createElement("p");p.className="note";p.textContent=t("telemetry.loading");el.appendChild(p);return;
+    // The last readings stay up while the next ones are on the way; only a
+    // block that has never said anything yet says it is loading, so a row
+    // that already reported offline or an error does not flip back each poll.
+    if(!p.has&&!p.seen){setText(p.note,t("telemetry.loading"));p.note.className="note";p.note.hidden=false;}
+    return;
   }
+  p.seen=true;
   if(mode==="error"){
-    // An offline plug cannot answer for its readings, and the row already
-    // says so next to the switch: one quiet note beats a second red line.
+    // An offline plug cannot answer for its readings, but the last ones it
+    // gave are still the truth about that moment: keep them and say so.
     var off=String(payload).toLowerCase().indexOf("offline")!==-1;
-    var e=document.createElement("p");
-    e.className=off?"note":"err-text";
-    if(!off)e.setAttribute("role","alert");
-    e.textContent=off?t("telemetry.offline"):tf("telemetry.error",{detail:payload});
-    el.appendChild(e);
-    if(!off)el.appendChild(makeBtn(t("action.retry"),true,function(){fetchState(dev);}));
+    p.btn.hidden=true;
+    if(p.has){
+      p.note.className="note";
+      p.note.removeAttribute("role");
+      setText(p.note,tf("telemetry.stale",{time:fmtTime(p.time)}));
+    }else{
+      p.note.className=off?"note":"err-text";
+      // The first failure is the one worth announcing; a note that keeps its
+      // text is not rewritten, so later failures stay quiet.
+      if(off)p.note.removeAttribute("role");else p.note.setAttribute("role","alert");
+      setText(p.note,off?t("telemetry.offline"):tf("telemetry.error",{detail:payload}));
+      p.btn.hidden=off;
+    }
+    p.note.hidden=false;
     return;
   }
   var tele=payload||{};
   var keys=Object.keys(tele);
-  if(!keys.length){
-    var q=document.createElement("p");q.className="note";q.textContent=t("telemetry.none");el.appendChild(q);return;
-  }
-  // Power is the one enlarged reading in the whole panel. Everything else
-  // stays small so the eye lands on the breaker's live load.
   var power=tele.cur_power;
+  p.power.hidden=!power;
   if(power){
-    var row=document.createElement("p");row.className="power";
-    var w=document.createElement("span");w.className="watts";
-    w.textContent=nf(Number(power.value!==undefined?power.value:power.raw).toFixed(1));
-    var u=document.createElement("span");u.className="unit";u.textContent=power.unit?unitText(power.unit):"W";
-    row.appendChild(w);row.appendChild(u);el.appendChild(row);
+    setText(p.w,nf(Number((power.value!==undefined?power.value:power.raw)).toFixed(1)));
+    setText(p.u,power.unit?unitText(power.unit):"W");
   }
-  // One line of secondary telemetry. These are the readings the row carries;
-  // no raw point behind them is printed a second time.
-  var order=["cur_current","cur_voltage","add_ele"];
-  var labels={cur_current:t("telemetry.current"),cur_voltage:t("telemetry.voltage"),add_ele:t("telemetry.energy")};
-  var rest=order.filter(function(k){return keys.indexOf(k)!==-1;});
-  if(rest.length){
-    // Units carry the meaning, so the line stays one line at 390; the labels
-    // stay in the accessible text.
-    var line=document.createElement("p");
-    line.className="secondary";
-    rest.forEach(function(k,i){
-      if(i)line.appendChild(document.createTextNode(" · "));
-      var l=document.createElement("span");l.className="visually-hidden";l.textContent=labels[k]+" ";
-      var v=document.createElement("span");v.className="tval";v.textContent=fmtTeleVal(tele[k]);
-      line.appendChild(l);line.appendChild(v);
-    });
-    el.appendChild(line);
+  var shown=false;
+  TELE_ORDER.forEach(function(k){
+    var c=p.cells[k];
+    var on=keys.indexOf(k)!==-1;
+    c.li.hidden=!on;
+    if(on){setText(c.v,fmtTeleVal(tele[k]));shown=true;}
+  });
+  p.list.hidden=!shown;
+  p.btn.hidden=true;
+  p.note.hidden=true;
+  p.has=!!(power||shown);
+  if(p.has)p.time=Date.now();
+  else{
+    p.note.className="note";
+    p.note.removeAttribute("role");
+    setText(p.note,t("telemetry.none"));
+    p.note.hidden=false;
   }
 }
+
 // The raw read-only points the Telemetry block already shows once.
 var TELE_CODES={cur_power:1,cur_current:1,cur_voltage:1,add_ele:1};
 function setFold(dev,rows){
