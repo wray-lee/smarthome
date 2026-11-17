@@ -664,6 +664,111 @@ async fn sensitive_action_needs_confirm() {
 }
 
 #[tokio::test]
+async fn a_password_override_allows_one_write_on_a_protected_device() {
+    let (_dir, db) = temp_db();
+    seed_gh(&db);
+    home_store::Store::open(&db)
+        .unwrap()
+        .protect("google_home", GH_PLUG)
+        .unwrap();
+    let pid = tuya_home_id();
+    home_store::Store::open(&db)
+        .unwrap()
+        .protect("tuya", &pid)
+        .unwrap();
+
+    let foyer = MockServer::start().await;
+    mount_foyer(&foyer, &gh_states()).await;
+    let api = MockServer::start().await;
+    mount_tuya_devices(&api).await;
+    mount_tuya_command(&api, &pid).await;
+    seed_tuya(&db, &api.uri(), 7200);
+
+    let port = free_port();
+    let mut envs = gh_env(&foyer);
+    envs.extend(tuya_env(&api));
+    let _s = spawn_env(&db, port, &["--password".into(), "pw123456".into()], &envs);
+    let (_ls, _h, _j, cookie) = login_cookie(port, "pw123456");
+
+    // GH: no password -> 403 protected, zero UpdateTraits.
+    let form = format!("device={GH_PLUG}&trait=onOff&value=false");
+    let (status, j) = post_form(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 403, "{j}");
+    assert_eq!(j["error"]["code"], "protected");
+    assert_eq!(foyer_count(&foyer, UPDATE_PATH).await, 0);
+
+    // Wrong password -> 403 protected, still zero writes.
+    let form = format!("device={GH_PLUG}&trait=onOff&value=false&password=nope");
+    let (status, j) = post_form(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 403, "{j}");
+    assert_eq!(j["error"]["code"], "protected");
+    assert_eq!(foyer_count(&foyer, UPDATE_PATH).await, 0);
+
+    // Right password -> 200 and one write; the protected list is unchanged.
+    let form = format!("device={GH_PLUG}&trait=onOff&value=false&password=pw123456");
+    let (status, j) = post_form(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 200, "{j}");
+    assert_eq!(j["data"]["changed"]["trait"], "onOff");
+    assert_eq!(foyer_count(&foyer, UPDATE_PATH).await, 1);
+    let protected = home_store::Store::open(&db)
+        .unwrap()
+        .protected_devices()
+        .unwrap();
+    assert_eq!(protected.len(), 2, "{protected:?}");
+
+    // Still protected: the next call without a password is refused again.
+    let form = format!("device={GH_PLUG}&trait=onOff&value=true");
+    let (status, j) = post_form(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 403, "{j}");
+    assert_eq!(j["error"]["code"], "protected");
+    assert_eq!(foyer_count(&foyer, UPDATE_PATH).await, 1);
+
+    // Tuya: no password -> 403, zero commands; right password -> 200.
+    let (status, j) = post_form(port, "/api/tuya/on", &format!("device={pid}"), &cookie);
+    assert_eq!(status, 403, "{j}");
+    assert_eq!(j["error"]["code"], "protected");
+    assert_eq!(tuya_count(&api, "/commands").await, 0);
+
+    let form = format!("device={pid}&password=pw123456");
+    let (status, j) = post_form(port, "/api/tuya/on", &form, &cookie);
+    assert_eq!(status, 200, "{j}");
+    assert_eq!(tuya_count(&api, "/commands").await, 1);
+}
+
+#[tokio::test]
+async fn a_protected_lock_needs_confirm_even_with_the_override_password() {
+    let (_dir, db) = temp_db();
+    seed_gh(&db);
+    home_store::Store::open(&db)
+        .unwrap()
+        .protect("google_home", GH_LOCK)
+        .unwrap();
+    let foyer = MockServer::start().await;
+    mount_foyer(&foyer, &gh_states()).await;
+    let port = free_port();
+    let _s = spawn_env(
+        &db,
+        port,
+        &["--password".into(), "pw123456".into()],
+        &gh_env(&foyer),
+    );
+    let (_ls, _h, _j, cookie) = login_cookie(port, "pw123456");
+
+    let form = format!("device={GH_LOCK}&trait=lockUnlock.isLocked&value=false&password=pw123456");
+    let (status, j) = post_form(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 403, "{j}");
+    assert_eq!(j["error"]["code"], "sensitive_action");
+    assert_eq!(foyer_count(&foyer, UPDATE_PATH).await, 0);
+
+    let form = format!(
+        "device={GH_LOCK}&trait=lockUnlock.isLocked&value=false&password=pw123456&confirm=true"
+    );
+    let (status, j) = post_form(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 200, "{j}");
+    assert_eq!(foyer_count(&foyer, UPDATE_PATH).await, 1);
+}
+
+#[tokio::test]
 async fn exit_to_http_status_mapping_for_usage_offline_and_reauth() {
     // Usage (400): unknown trait value for GH.
     {

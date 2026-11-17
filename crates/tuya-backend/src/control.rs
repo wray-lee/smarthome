@@ -36,11 +36,12 @@ pub fn on_off_command(
     store: &Store,
     device_ref: &str,
     on: bool,
+    force: bool,
 ) -> Result<Value, (ErrorBody, Exit)> {
-    guard::require(store, BACKEND, device_ref.trim())?;
+    guard::require_with(store, BACKEND, device_ref.trim(), force)?;
     let client = TuyaClient::open(store, cfg).map_err(into_pair)?;
     let device = resolve(&client, device_ref)?;
-    guard::require(store, BACKEND, &device.id)?;
+    guard::require_with(store, BACKEND, &device.id, force)?;
     if !device.online {
         return Err(offline(&device));
     }
@@ -71,11 +72,12 @@ pub fn set_command(
     device_ref: &str,
     code: &str,
     raw_value: &str,
+    force: bool,
 ) -> Result<Value, (ErrorBody, Exit)> {
-    guard::require(store, BACKEND, device_ref.trim())?;
+    guard::require_with(store, BACKEND, device_ref.trim(), force)?;
     let client = TuyaClient::open(store, cfg).map_err(into_pair)?;
     let device = resolve(&client, device_ref)?;
-    guard::require(store, BACKEND, &device.id)?;
+    guard::require_with(store, BACKEND, &device.id, force)?;
     if !device.online {
         return Err(offline(&device));
     }

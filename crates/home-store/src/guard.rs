@@ -33,11 +33,11 @@ impl From<StoreError> for GuardError {
 
 /// May this Device be written? Reads never ask; writes always do.
 pub fn check(store: &Store, backend: &str, device_id: &str) -> Result<GuardDecision, GuardError> {
-    Ok(if store.is_protected(backend, device_id)? {
-        GuardDecision::Protected
+    if store.is_protected(backend, device_id)? {
+        Ok(GuardDecision::Protected)
     } else {
-        GuardDecision::Allowed
-    })
+        Ok(GuardDecision::Allowed)
+    }
 }
 
 /// [`check`], as the error a write path returns: exit 6, `protected`.
@@ -46,7 +46,31 @@ pub fn require(
     backend: &'static str,
     device_id: &str,
 ) -> Result<(), (crate::contract::ErrorBody, crate::contract::Exit)> {
-    let decision = check(store, backend, device_id).map_err(|e| {
+    require_with(store, backend, device_id, false)
+}
+
+/// [`check`], with a one-time override. `force` lets exactly this call
+/// through a protected Device; it never edits the protected list.
+pub fn check_with(
+    store: &Store,
+    backend: &str,
+    device_id: &str,
+    force: bool,
+) -> Result<GuardDecision, GuardError> {
+    if force {
+        return Ok(GuardDecision::Allowed);
+    }
+    check(store, backend, device_id)
+}
+
+/// [`require`], with a one-time override; see [`check_with`].
+pub fn require_with(
+    store: &Store,
+    backend: &'static str,
+    device_id: &str,
+    force: bool,
+) -> Result<(), (crate::contract::ErrorBody, crate::contract::Exit)> {
+    let decision = check_with(store, backend, device_id, force).map_err(|e| {
         (
             crate::contract::ErrorBody::new("storage", e.to_string()),
             crate::contract::Exit::Upstream,
@@ -105,5 +129,52 @@ mod tests {
         assert_eq!(body.code, "protected");
         assert!(body.message.contains("dev-1"));
         assert!(require(&store, "google_home", "dev-2").is_ok());
+    }
+
+    #[test]
+    fn force_allows_one_write_and_never_touches_the_protected_list() {
+        let store = Store::open_in_memory().unwrap();
+        store.protect("google_home", "dev-1").unwrap();
+        assert_eq!(
+            check_with(&store, "google_home", "dev-1", true).unwrap(),
+            GuardDecision::Allowed
+        );
+        assert!(require_with(&store, "google_home", "dev-1", true).is_ok());
+        // The list is exactly what it was: protection is not consumed.
+        assert_eq!(list(&store).unwrap(), store.protected_devices().unwrap());
+        assert_eq!(list(&store).unwrap().len(), 1);
+        // Without force the same Device is still refused.
+        assert_eq!(
+            check(&store, "google_home", "dev-1").unwrap(),
+            GuardDecision::Protected
+        );
+        assert_eq!(
+            require_with(&store, "google_home", "dev-1", false)
+                .unwrap_err()
+                .0
+                .code,
+            "protected"
+        );
+    }
+
+    #[test]
+    fn the_force_parameter_defaults_are_the_old_behaviour() {
+        let store = Store::open_in_memory().unwrap();
+        store.protect("tuya", "dev-1").unwrap();
+        assert_eq!(
+            check_with(&store, "tuya", "dev-1", false).unwrap(),
+            check(&store, "tuya", "dev-1").unwrap()
+        );
+        assert_eq!(
+            require_with(&store, "tuya", "dev-1", false)
+                .unwrap_err()
+                .1
+                .code(),
+            require(&store, "tuya", "dev-1").unwrap_err().1.code()
+        );
+        assert_eq!(
+            check_with(&store, "tuya", "dev-2", true).unwrap(),
+            GuardDecision::Allowed
+        );
     }
 }

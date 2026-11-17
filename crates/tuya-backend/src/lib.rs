@@ -131,8 +131,9 @@ pub fn on_off_command(
     store: &Store,
     device: &str,
     on: bool,
+    force: bool,
 ) -> Result<serde_json::Value, (ErrorBody, Exit)> {
-    control::on_off_command(cfg, store, device, on)
+    control::on_off_command(cfg, store, device, on, force)
 }
 
 /// `home tuya get <device>`: data points, Telemetry and calibration.
@@ -151,8 +152,9 @@ pub fn set_command(
     device: &str,
     code: &str,
     value: &str,
+    force: bool,
 ) -> Result<serde_json::Value, (ErrorBody, Exit)> {
-    control::set_command(cfg, store, device, code, value)
+    control::set_command(cfg, store, device, code, value, force)
 }
 
 #[cfg(test)]

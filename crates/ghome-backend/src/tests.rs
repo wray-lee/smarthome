@@ -350,6 +350,7 @@ fn set_trait_sends_the_partner_ids_and_reports_the_change() {
         "office/Lamp",
         TraitChange::OnOff(false),
         false,
+        false,
     )
     .unwrap();
     assert_eq!(doc["id"], "dup-2");
@@ -387,6 +388,7 @@ fn a_protected_device_is_refused_even_with_confirm_and_only_the_graph_is_read() 
         "dup-2",
         TraitChange::OnOff(false),
         true,
+        false,
     )
     .unwrap_err();
     assert_eq!(exit.code(), 6);
@@ -408,6 +410,71 @@ fn a_protected_device_is_refused_even_with_confirm_and_only_the_graph_is_read() 
 }
 
 #[test]
+fn force_writes_a_protected_device_and_keeps_it_protected() {
+    let foyer = happy_foyer(
+        &on_off_state("dup-2", 1, true),
+        &on_off_state("dup-2", 1, false),
+    );
+    let store = Store::open_in_memory().unwrap();
+    store.protect(BACKEND, "dup-2").unwrap();
+    let mut session = foyer.session(&store);
+    let doc = set_trait(
+        &mut session,
+        &store,
+        "dup-2",
+        TraitChange::OnOff(false),
+        false,
+        true,
+    )
+    .unwrap();
+    assert_eq!(doc["changed"]["trait"], "onOff");
+    assert_eq!(foyer.hits(UPDATE_PATH), 1, "force sends the one write");
+    assert_eq!(
+        store.protected_devices().unwrap().len(),
+        1,
+        "still protected"
+    );
+    // The next call without force is refused again, before any trait RPC.
+    let mut session = foyer.session(&store);
+    let (body, exit) = set_trait(
+        &mut session,
+        &store,
+        "dup-2",
+        TraitChange::OnOff(true),
+        false,
+        false,
+    )
+    .unwrap_err();
+    assert_eq!(exit.code(), 6);
+    assert_eq!(body.code, "protected");
+}
+
+#[test]
+fn a_protected_lock_with_force_but_without_confirm_is_still_sensitive() {
+    let foyer = happy_foyer(&on_off_state("lock-1", 1, true), "[]");
+    let store = Store::open_in_memory().unwrap();
+    store.protect(BACKEND, "lock-1").unwrap();
+    let mut session = foyer.session(&store);
+    let (body, exit) = set_trait(
+        &mut session,
+        &store,
+        "lock-1",
+        TraitChange::Lock(false),
+        false,
+        true,
+    )
+    .unwrap_err();
+    assert_eq!(exit.code(), 6);
+    assert_eq!(body.code, "sensitive_action");
+    assert_eq!(
+        foyer.paths(),
+        vec![GRAPH_PATH.to_string()],
+        "no trait RPC before the Sensitive Action refusal"
+    );
+    assert_eq!(foyer.hits(UPDATE_PATH), 0);
+}
+
+#[test]
 fn unlock_and_disarm_need_confirm_and_send_nothing_without_it() {
     let foyer = happy_foyer(&on_off_state("lock-1", 1, true), "[]");
     let store = Store::open_in_memory().unwrap();
@@ -417,6 +484,7 @@ fn unlock_and_disarm_need_confirm_and_send_nothing_without_it() {
         &store,
         "lock-1",
         TraitChange::Lock(false),
+        false,
         false,
     )
     .unwrap_err();
@@ -450,6 +518,7 @@ fn confirming_an_unlock_sends_is_locked_false() {
         "lock-1",
         TraitChange::Lock(false),
         true,
+        false,
     )
     .unwrap();
     let sent: Value = serde_json::from_str(&foyer.bodies(UPDATE_PATH)[0]).unwrap();
@@ -471,6 +540,7 @@ fn a_trait_the_device_does_not_advertise_is_usage() {
         "dup-2",
         TraitChange::Brightness(40),
         false,
+        false,
     )
     .unwrap_err();
     assert_eq!(exit.code(), 2);
@@ -491,6 +561,7 @@ fn an_offline_device_refuses_a_set_with_exit_four() {
         &store,
         "dup-2",
         TraitChange::OnOff(false),
+        false,
         false,
     )
     .unwrap_err();

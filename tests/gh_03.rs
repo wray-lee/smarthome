@@ -719,6 +719,65 @@ async fn a_protected_device_is_refused_even_with_confirm_but_still_readable() {
 }
 
 #[tokio::test]
+async fn force_writes_a_protected_device_and_the_protected_list_is_unchanged() {
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes(&states()).await;
+    login(&db, &foyer, &auth);
+
+    let mut cmd = home(&db);
+    cmd.args(["protect", &format!("gh:{LAMP_A}")]);
+    assert_eq!(run(&mut cmd).0, 0);
+
+    let mut cmd = gh_set(&db, &foyer, &auth, LAMP_A, "onOff", "false");
+    cmd.arg("--force");
+    let (code, json, stdout, _) = run_full(&mut cmd);
+    assert_eq!(code, 0, "{stdout}");
+    assert_eq!(json["data"]["changed"]["trait"], "onOff");
+    assert_eq!(requests_to(&foyer, UPDATE_PATH).await.len(), 1);
+
+    // The list is unchanged and the Device is still refused without --force.
+    let mut cmd = home(&db);
+    cmd.args(["protect", "--list"]);
+    let (_, json) = run(&mut cmd);
+    let rows = json["data"].as_array().unwrap();
+    assert_eq!(rows.len(), 1, "{rows:?}");
+    assert_eq!(rows[0]["device_id"], LAMP_A);
+
+    let (code, json, stdout, _) =
+        run_full(&mut gh_set(&db, &foyer, &auth, LAMP_A, "onOff", "true"));
+    assert_eq!(code, 6, "{stdout}");
+    assert_eq!(json["error"]["code"], "protected");
+    assert_eq!(
+        requests_to(&foyer, UPDATE_PATH).await.len(),
+        1,
+        "the no-force call sends no UpdateTraits"
+    );
+}
+
+#[tokio::test]
+async fn a_protected_lock_with_force_but_without_confirm_is_still_sensitive() {
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes(&states()).await;
+    login(&db, &foyer, &auth);
+
+    let mut cmd = home(&db);
+    cmd.args(["protect", &format!("gh:{LOCK}")]);
+    assert_eq!(run(&mut cmd).0, 0);
+
+    let mut cmd = gh_set(&db, &foyer, &auth, LOCK, "lockUnlock.isLocked", "false");
+    cmd.arg("--force");
+    let (code, json, stdout, _) = run_full(&mut cmd);
+    assert_eq!(code, 6, "{stdout}");
+    assert_eq!(json["error"]["code"], "sensitive_action");
+    assert_eq!(
+        request_paths(&foyer).await,
+        vec![GRAPH_PATH.to_string()],
+        "no trait RPC before the Sensitive Action refusal"
+    );
+    assert!(requests_to(&foyer, UPDATE_PATH).await.is_empty());
+}
+
+#[tokio::test]
 async fn a_rejected_bearer_is_minted_again_once_and_the_call_retried() {
     let (_dir, db) = temp_db();
     let foyer = MockServer::start().await;

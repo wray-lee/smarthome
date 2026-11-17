@@ -766,3 +766,127 @@ fn responses_carry_security_headers_and_only_live_sessions_pass() {
     );
     assert_eq!(http_full(port, &req).0, 401, "logged-out id still works");
 }
+
+// --- shared failed-password rate limiting --------------------------------
+
+/// POST /login without a body returns the status and headers.
+fn post_login(port: u16, password: &str) -> (u16, Vec<(String, String)>, String) {
+    let form = format!("password={password}");
+    let req = format!(
+        "POST /login HTTP/1.1\r\nHost: x\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{form}",
+        form.len()
+    );
+    http_full(port, &req)
+}
+
+fn post_form_headers(
+    port: u16,
+    p: &str,
+    form: &str,
+    cookie: &str,
+) -> (u16, Vec<(String, String)>, Value) {
+    let req = format!(
+        "POST {p} HTTP/1.1\r\nHost: x\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {}\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n{form}",
+        form.len()
+    );
+    let (status, headers, body) = http_full(port, &req);
+    (status, headers, body_json(&body))
+}
+
+/// Three wrong logins are 401; the fourth is 429 with Retry-After, and even
+/// the right password stays 429 until the backoff expires.
+#[test]
+fn login_rate_limit_blocks_even_the_right_password_during_backoff() {
+    let (_dir, db) = temp_db();
+    let port = free_port();
+    let _s = spawn_env(&db, port, &[]);
+
+    for _ in 0..3 {
+        let (status, _h, _b) = post_login(port, "wrong");
+        assert_eq!(status, 401);
+    }
+    let (status, headers, body) = post_login(port, "wrong");
+    assert_eq!(status, 429, "{body}");
+    assert!(header(&headers, "retry-after").is_some(), "Retry-After");
+    assert!(body.contains("Too many failed attempts"), "{body}");
+
+    // A right password during the backoff must not succeed.
+    let (status, _h, body) = post_login(port, "pw123456");
+    assert_eq!(status, 429, "{body}");
+
+    // After the 2 s backoff, the right password works and resets the counter.
+    std::thread::sleep(Duration::from_millis(2300));
+    let (status, _h, _b) = post_login(port, "pw123456");
+    assert_eq!(status, 200);
+    // Reset: two more wrong ones are 401, not 429.
+    for _ in 0..2 {
+        let (status, _h, _b) = post_login(port, "wrong");
+        assert_eq!(status, 401);
+    }
+}
+
+/// Failures on a protected override share the counter with /login.
+#[tokio::test]
+async fn override_failures_rate_limit_the_login_too() {
+    let (_dir, db) = temp_db();
+    seed_gh(&db);
+    home_store::Store::open(&db)
+        .unwrap()
+        .protect("google_home", GH_LAMP)
+        .unwrap();
+    let foyer = MockServer::start().await;
+    mount_foyer(&foyer).await;
+    let port = free_port();
+    let _s = spawn_env(&db, port, &gh_env(&foyer));
+    let cookie = login_cookie(port);
+
+    for _ in 0..3 {
+        let form = format!("device={GH_LAMP}&trait=onOff&value=false&password=nope");
+        let (status, _h, j) = post_form_headers(port, "/api/gh/set", &form, &cookie);
+        assert_eq!(status, 403, "{j}");
+        assert_eq!(j["error"]["code"], "protected");
+    }
+    // The fourth failure through the override is 429 with the JSON code.
+    let form = format!("device={GH_LAMP}&trait=onOff&value=false&password=nope");
+    let (status, headers, j) = post_form_headers(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 429, "{j}");
+    assert!(header(&headers, "retry-after").is_some(), "Retry-After");
+    assert_eq!(j["error"]["code"], "rate_limited");
+    assert_eq!(count_path(&foyer, UPDATE_PATH).await, 0);
+
+    // The shared counter also blocks /login, even with the right password.
+    let (status, _h, _b) = post_login(port, "pw123456");
+    assert_eq!(status, 429);
+    // And a protected override with the RIGHT password is still 429.
+    let form = format!("device={GH_LAMP}&trait=onOff&value=false&password=pw123456");
+    let (status, _h, j) = post_form_headers(port, "/api/gh/set", &form, &cookie);
+    assert_eq!(status, 429, "{j}");
+    assert_eq!(count_path(&foyer, UPDATE_PATH).await, 0);
+}
+
+/// Backoff grows: after the 2 s block expires, the next failure blocks for
+/// longer than 2 s.
+#[test]
+fn the_backoff_grows_exponentially_after_each_failure() {
+    let (_dir, db) = temp_db();
+    let port = free_port();
+    let _s = spawn_env(&db, port, &[]);
+
+    for _ in 0..3 {
+        assert_eq!(post_login(port, "wrong").0, 401);
+    }
+    assert_eq!(post_login(port, "wrong").0, 429);
+    std::thread::sleep(Duration::from_millis(2300));
+    // Backoff over; one more failure takes the count to 5 -> 4 s block.
+    let (status, _h, body) = post_login(port, "wrong");
+    assert_eq!(status, 401, "{body}");
+    let (status, _h, _b) = post_login(port, "wrong");
+    assert_eq!(status, 429);
+    // 2.3 s is past the first block but not the 4 s one.
+    std::thread::sleep(Duration::from_millis(2300));
+    let (status, _h, body) = post_login(port, "pw123456");
+    assert_eq!(status, 429, "still blocked for 4 s: {body}");
+    std::thread::sleep(Duration::from_millis(2300));
+    let (status, _h, _b) = post_login(port, "pw123456");
+    assert_eq!(status, 200);
+}

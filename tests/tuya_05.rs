@@ -822,6 +822,73 @@ async fn a_protected_device_is_refused_before_any_write() {
     }
 }
 
+#[tokio::test]
+async fn force_writes_a_protected_device_and_the_protected_list_is_unchanged() {
+    let id = home_id();
+    for (verb, want) in [("on", true), ("off", false)] {
+        let (_dir, db) = temp_db();
+        seed_session(&db, 7200);
+        home_store::Store::open(&db)
+            .unwrap()
+            .protect("tuya", &id)
+            .unwrap();
+        let api = MockServer::start().await;
+        mount_fixture_devices(&api).await;
+        mount_command_fixed(&api, &id, command_ok()).await;
+        let mut cmd = home(&db);
+        point_at(&mut cmd, &api);
+        cmd.args(["tuya", verb, &id, "--force"]);
+        let (code, json) = run(&mut cmd);
+        assert_eq!(code, 0, "{verb}: {json}");
+        assert_eq!(json["data"]["changed"]["value"], want);
+        assert_eq!(requests_for(&api, "/commands").await.len(), 1);
+        // The protection is not consumed: it is still listed.
+        let mut list = home(&db);
+        list.args(["protect", "--list"]);
+        let (_, json) = run(&mut list);
+        let rows = json["data"].as_array().unwrap();
+        assert_eq!(rows.len(), 1, "{rows:?}");
+        assert_eq!(rows[0]["device_id"], id);
+    }
+
+    // `set --force` writes too, and the following no-force call is still 403.
+    {
+        let (_dir, db) = temp_db();
+        seed_session(&db, 7200);
+        home_store::Store::open(&db)
+            .unwrap()
+            .protect("tuya", &id)
+            .unwrap();
+        let api = MockServer::start().await;
+        mount_fixture_devices(&api).await;
+        let spec: serde_json::Value = serde_json::from_str(SPEC_1).unwrap();
+        Mock::given(method("GET"))
+            .and(path(format!("/v1.1/m/life/{id}/specifications")))
+            .respond_with(envelope(spec))
+            .mount(&api)
+            .await;
+        mount_command_fixed(&api, &id, command_ok()).await;
+        let mut cmd = home(&db);
+        point_at(&mut cmd, &api);
+        cmd.args(["tuya", "set", &id, "child_lock", "true", "--force"]);
+        let (code, json) = run(&mut cmd);
+        assert_eq!(code, 0, "{json}");
+        assert_eq!(requests_for(&api, "/commands").await.len(), 1);
+
+        let mut cmd = home(&db);
+        point_at(&mut cmd, &api);
+        cmd.args(["tuya", "off", &id]);
+        let (code, json) = run(&mut cmd);
+        assert_eq!(code, 6, "{json}");
+        assert_eq!(json["error"]["code"], "protected");
+        assert_eq!(
+            requests_for(&api, "/commands").await.len(),
+            1,
+            "the no-force call sends nothing"
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 11. Missing parameters
 #[tokio::test]

@@ -94,6 +94,9 @@ struct SetArgs {
     /// Allow a Sensitive Action (unlock, disarm).
     #[arg(long)]
     confirm: bool,
+    /// One-time override for a protected Device; does not remove protection.
+    #[arg(long)]
+    force: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -108,11 +111,17 @@ enum TuyaCmd {
     On {
         /// Device ID or name (case-insensitive).
         device: String,
+        /// One-time override for a protected Device; does not remove protection.
+        #[arg(long)]
+        force: bool,
     },
     /// Turn a Tuya Device off.
     Off {
         /// Device ID or name (case-insensitive).
         device: String,
+        /// One-time override for a protected Device; does not remove protection.
+        #[arg(long)]
+        force: bool,
     },
     /// Print data points, Telemetry and calibration for one Tuya Device.
     Get {
@@ -127,6 +136,9 @@ enum TuyaCmd {
         code: String,
         /// The raw value to write.
         value: String,
+        /// One-time override for a protected Device; does not remove protection.
+        #[arg(long)]
+        force: bool,
     },
 }
 
@@ -218,16 +230,19 @@ fn run(cli: &Cli) -> Result<serde_json::Value, (ErrorBody, Exit)> {
                 TuyaCmd::Login(args) => tuya_login(&cfg, &store, args),
                 TuyaCmd::Devices => tuya_backend::devices_command(&cfg, &store),
                 TuyaCmd::Keys => tuya_backend::keys_command(&cfg, &store),
-                TuyaCmd::On { device } => tuya_backend::on_off_command(&cfg, &store, device, true),
-                TuyaCmd::Off { device } => {
-                    tuya_backend::on_off_command(&cfg, &store, device, false)
+                TuyaCmd::On { device, force } => {
+                    tuya_backend::on_off_command(&cfg, &store, device, true, *force)
+                }
+                TuyaCmd::Off { device, force } => {
+                    tuya_backend::on_off_command(&cfg, &store, device, false, *force)
                 }
                 TuyaCmd::Get { device } => tuya_backend::get_command(&cfg, &store, device),
                 TuyaCmd::Set {
                     device,
                     code,
                     value,
-                } => tuya_backend::set_command(&cfg, &store, device, code, value),
+                    force,
+                } => tuya_backend::set_command(&cfg, &store, device, code, value, *force),
             }
         }
         Command::Protect(args) => protect(&store, args),
@@ -366,7 +381,14 @@ fn set(store: &Store, args: &SetArgs) -> Result<serde_json::Value, (ErrorBody, E
         args.mode.as_deref(),
         args.setpoint,
     )?;
-    ghome_backend::set_trait(&mut session, store, &args.device, change, args.confirm)
+    ghome_backend::set_trait(
+        &mut session,
+        store,
+        &args.device,
+        change,
+        args.confirm,
+        args.force,
+    )
 }
 
 /// `home tuya login [--user-code CODE]`: the QR goes to stderr, stdout keeps
@@ -482,10 +504,52 @@ const SECURITY_HEADERS: &[(&str, &str)] = &[
     ("Cache-Control", "no-store"),
 ];
 
+/// Failed-password throttle shared by `/login` and the protected-override
+/// password check. `Instant` gives the sub-second precision the backoff needs.
+struct AuthThrottle {
+    failures: u32,
+    blocked_until: Option<std::time::Instant>,
+}
+
+impl AuthThrottle {
+    fn new() -> Self {
+        Self {
+            failures: 0,
+            blocked_until: None,
+        }
+    }
+
+    /// Check the backoff FIRST, so a right password during it neither
+    /// succeeds nor says anything. `Ok(true)` is a match (counter reset),
+    /// `Ok(false)` a mismatch, `Err(secs)` the remaining wait.
+    fn verify(&mut self, given: &[u8], password: &[u8]) -> Result<bool, u64> {
+        let now = std::time::Instant::now();
+        if let Some(until) = self.blocked_until {
+            if now < until {
+                let wait = until - now;
+                return Err(wait.as_secs() + u64::from(wait.subsec_nanos() > 0));
+            }
+        }
+        if constant_time_eq(given, password) {
+            self.failures = 0;
+            self.blocked_until = None;
+            return Ok(true);
+        }
+        self.failures += 1;
+        if self.failures >= 3 {
+            let shift = (self.failures - 3).min(5);
+            self.blocked_until = Some(now + Duration::from_secs(2 << shift));
+        }
+        Ok(false)
+    }
+}
+
 /// Everything a handler needs, shared by every connection thread.
 struct ServerState {
     store: Arc<Mutex<Store>>,
     password: Vec<u8>,
+    /// One counter for every password check on this panel.
+    auth_throttle: Mutex<AuthThrottle>,
     /// Session id -> expiry (Unix seconds). The browser's cookie carries the
     /// same age; keeping it here too means a captured id dies on schedule
     /// instead of living until the process restarts.
@@ -496,6 +560,56 @@ struct ServerState {
     /// the code the start used without the form repeating it. Bounded in the
     /// start handler so stale tokens cannot grow without limit.
     pending_tuya_qr: Mutex<HashMap<String, String>>,
+}
+
+/// One password check against the panel password, through the shared throttle.
+fn verify_password(state: &ServerState, given: &[u8]) -> Result<bool, u64> {
+    match state.auth_throttle.lock() {
+        Ok(mut throttle) => throttle.verify(given, &state.password),
+        // A poisoned lock is a programming error, not a password answer.
+        Err(_) => Err(1),
+    }
+}
+
+/// The `force` flag for one API write, from the optional POST-form
+/// `password`. Absent means no override (`Some(false)`). A mismatch writes
+/// 403 `protected` with zero upstream calls, a blocked throttle writes 429,
+/// and both return `None`. A right password applies to this call only and is
+/// never stored as a token.
+fn override_force(
+    state: &ServerState,
+    fields: &HashMap<String, String>,
+    stream: &mut TcpStream,
+) -> Option<bool> {
+    let Some(password) = fields.get("password") else {
+        return Some(false);
+    };
+    match verify_password(state, password.as_bytes()) {
+        Ok(true) => Some(true),
+        Ok(false) => {
+            let body = json_err(ErrorBody::new(
+                "protected",
+                "a protected Device needs its override password to be written",
+            ));
+            http_reply(stream, 403, "Forbidden", &body, &[]);
+            None
+        }
+        Err(wait) => {
+            let body = json_err(ErrorBody::new(
+                "rate_limited",
+                "too many failed password attempts; try again later",
+            ));
+            let retry = wait.to_string();
+            http_reply(
+                stream,
+                429,
+                "Too Many Requests",
+                &body,
+                &[("Retry-After", &retry)],
+            );
+            None
+        }
+    }
 }
 
 fn new_session_id() -> String {
@@ -716,6 +830,7 @@ fn serve(
     let state = Arc::new(ServerState {
         store: Arc::new(Mutex::new(store)),
         password: password.as_bytes().to_vec(),
+        auth_throttle: Mutex::new(AuthThrottle::new()),
         sessions: Mutex::new(HashMap::new()),
         cookie_secure,
         tuya_reauth: Mutex::new(None),
@@ -796,9 +911,24 @@ fn handle(
         ("POST", "/login") => {
             let fields = form_fields(body);
             let given = fields.get("password").map(String::as_str).unwrap_or("");
-            if !constant_time_eq(given.as_bytes(), &state.password) {
-                let page = login_page_with_error("Wrong password");
-                return http_reply(stream, 401, "Unauthorized", &page, &[]);
+            match verify_password(state, given.as_bytes()) {
+                Err(wait) => {
+                    let page = login_page_with_error(
+                        "Too many failed attempts. Wait before trying again.",
+                    );
+                    return http_reply(
+                        stream,
+                        429,
+                        "Too Many Requests",
+                        &page,
+                        &[("Retry-After", &wait.to_string())],
+                    );
+                }
+                Ok(false) => {
+                    let page = login_page_with_error("Wrong password");
+                    return http_reply(stream, 401, "Unauthorized", &page, &[]);
+                }
+                Ok(true) => {}
             }
             let id = new_session_id();
             if id.is_empty() {
@@ -907,7 +1037,11 @@ fn handle(
             let confirm = fields.get("confirm").map(String::as_str) == Some("true");
             let mode = fields.get("mode").map(String::as_str);
             let setpoint = fields.get("setpoint").and_then(|v| v.trim().parse().ok());
-            match api_gh_set(state, device, trait_name, value, mode, setpoint, confirm) {
+            let Some(force) = override_force(state, &fields, stream) else {
+                return;
+            };
+            let change = ghome_backend::TraitChange::parse(trait_name, value, mode, setpoint);
+            match change.and_then(|change| api_gh_set(state, device, change, confirm, force)) {
                 Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
                 Err((b, exit)) => {
                     let (status, reason) = exit_http(exit);
@@ -930,7 +1064,10 @@ fn handle(
             let fields = form_fields(body);
             let device = fields.get("device").map(String::as_str).unwrap_or("");
             let on = path.ends_with("/on");
-            match api_tuya_on_off(state, device, on) {
+            let Some(force) = override_force(state, &fields, stream) else {
+                return;
+            };
+            match api_tuya_on_off(state, device, on, force) {
                 Ok(v) => http_reply(stream, 200, "OK", &json_ok(v), &[]),
                 Err((b, exit)) => {
                     let (status, reason) = exit_http(exit);
@@ -1204,11 +1341,9 @@ fn api_gh_get(state: &ServerState, device: &str) -> Result<serde_json::Value, (E
 fn api_gh_set(
     state: &ServerState,
     device: &str,
-    trait_name: &str,
-    value: &str,
-    mode: Option<&str>,
-    setpoint: Option<f64>,
+    change: ghome_backend::TraitChange,
     confirm: bool,
+    force: bool,
 ) -> Result<serde_json::Value, (ErrorBody, Exit)> {
     let store = state.store.lock().map_err(|_| {
         (
@@ -1218,8 +1353,7 @@ fn api_gh_set(
     })?;
     let cfg = config::Config::from_env();
     let mut session = Session::open(&store, cfg)?;
-    let change = ghome_backend::TraitChange::parse(trait_name, value, mode, setpoint)?;
-    ghome_backend::set_trait(&mut session, &store, device, change, confirm)
+    ghome_backend::set_trait(&mut session, &store, device, change, confirm, force)
 }
 
 fn api_tuya_get(state: &ServerState, device: &str) -> Result<serde_json::Value, (ErrorBody, Exit)> {
@@ -1239,6 +1373,7 @@ fn api_tuya_on_off(
     state: &ServerState,
     device: &str,
     on: bool,
+    force: bool,
 ) -> Result<serde_json::Value, (ErrorBody, Exit)> {
     let store = state.store.lock().map_err(|_| {
         (
@@ -1247,7 +1382,7 @@ fn api_tuya_on_off(
         )
     })?;
     let cfg = tuya_backend::Config::from_env();
-    let result = tuya_backend::on_off_command(&cfg, &store, device, on);
+    let result = tuya_backend::on_off_command(&cfg, &store, device, on, force);
     sync_tuya_reauth(state, &result);
     result
 }
@@ -1399,6 +1534,29 @@ mod tests {
     }
 
     #[test]
+    fn the_throttle_blocks_before_comparing_and_grows_the_wait() {
+        let mut t = AuthThrottle::new();
+        for _ in 0..2 {
+            assert_eq!(t.verify(b"wrong", b"pw"), Ok(false));
+        }
+        // Third failure blocks for 2 s; a right password is refused meanwhile.
+        assert_eq!(t.verify(b"wrong", b"pw"), Ok(false));
+        assert!(t.verify(b"pw", b"pw").unwrap_err() >= 1);
+        assert!(t.verify(b"pw", b"pw").is_err(), "still blocked");
+        t.blocked_until = None;
+        // Fifth failure: 2 << 2 = 8 s.
+        t.failures = 4;
+        assert_eq!(t.verify(b"wrong", b"pw"), Ok(false));
+        let wait = t.verify(b"pw", b"pw").unwrap_err();
+        assert!((7..=8).contains(&wait), "wait was {wait}");
+        // A match after the backoff resets the counter.
+        t.blocked_until = None;
+        assert_eq!(t.verify(b"pw", b"pw"), Ok(true));
+        assert_eq!(t.failures, 0);
+        assert!(t.blocked_until.is_none());
+    }
+
+    #[test]
     fn form_fields_are_decoded() {
         let fields = form_fields("password=a%20b+c&device=x%3Ay");
         assert_eq!(fields["password"], "a b c");
@@ -1422,6 +1580,7 @@ mod tests {
         let state = ServerState {
             store: Arc::new(Mutex::new(store)),
             password: b"pw".to_vec(),
+            auth_throttle: Mutex::new(AuthThrottle::new()),
             sessions: Mutex::new(HashMap::from([
                 ("live".to_string(), now + 60),
                 ("stale".to_string(), now - 1),
@@ -1451,6 +1610,7 @@ mod tests {
         let state = ServerState {
             store: Arc::new(Mutex::new(store)),
             password: b"".to_vec(),
+            auth_throttle: Mutex::new(AuthThrottle::new()),
             sessions: Mutex::new(HashMap::new()),
             cookie_secure: false,
             tuya_reauth: Mutex::new(None),

@@ -357,7 +357,7 @@ async fn help_and_version_put_their_text_on_stderr_and_one_json_on_stdout() {
             "{args:?}: the help text must reach stderr, got {stderr:?}"
         );
         assert!(
-            !stdout.contains("Usage:") && !stdout.contains("home 0.1.1"),
+            !stdout.contains("Usage:") && !stdout.contains(version),
             "{args:?}: the help text must not reach stdout: {stdout:?}"
         );
     }

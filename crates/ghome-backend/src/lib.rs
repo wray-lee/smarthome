@@ -318,13 +318,14 @@ pub fn set_trait(
     device_ref: &str,
     change: TraitChange,
     confirm: bool,
+    force: bool,
 ) -> Result<Value, (ErrorBody, Exit)> {
     let devices = fetch_graph(session, store)?;
     let device = resolve::resolve(&devices, device_ref)?;
 
     // Protected beats everything, `--confirm` included: the guard is the one
     // write gate, and no flag bypasses it.
-    guard::require(store, BACKEND, &device.id)?;
+    guard::require_with(store, BACKEND, &device.id, force)?;
 
     if change.is_sensitive() && !confirm {
         return Err((
