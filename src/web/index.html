@@ -4,97 +4,197 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Devices | home</title>
+<title>家里的配电箱 | home</title>
 <style>
-:root{color-scheme:light dark;--fg:#111418;--muted:#3d4754;--bg:#ffffff;--card:#f4f6f8;--line:#767676;--accent:#0b57d0;--accent-fg:#ffffff;--ok:#0e6b2e;--warn-bg:#fdf0d5;--warn-fg:#1a1a1a;--err-bg:#fdecea;--err-fg:#1a1a1a;--focus:#0b57d0;--radius:8px}
-@media (prefers-color-scheme:dark){:root{--fg:#eceff3;--muted:#c3ccd7;--bg:#15181c;--card:#1e2329;--line:#9aa7b8;--accent:#7ab5ff;--accent-fg:#0a1f3f;--ok:#7ce2a3;--warn-bg:#3a2d10;--warn-fg:#ffe9b0;--err-bg:#3d1616;--err-fg:#ffb4b4;--focus:#7ab5ff}}
+:root{
+color-scheme:light dark;
+/* Cool gray enclosure, graphite rail, one tungsten accent. */
+--page:#DDE1E3;
+--page-ink:#2A2F33;
+--page-ink2:#4A5156;
+--rail:#2A2F33;
+--rail-ink:#E9ECEE;
+--rail-ink2:#C3C9CD;
+--bay:#F1F3F4;
+--ink:#2A2F33;
+--ink2:#3C4348;
+--muted:#5A6166;
+--line:#5A6166;
+--rule:#A7AEB2;
+--err:#B3261E;
+--amber:#F2B705;
+--switch:#2A2F33;
+--switch-ink:#E9ECEE;
+--focus:#2A2F33;
+--focus-rail:#F2B705;
+--btn:#F1F3F4;
+--btn-ink:#1B1F22;
+--slider:#2A2F33;
+}
+@media (prefers-color-scheme:dark){
+:root{
+--page:#1B1F22;
+--page-ink:#E9ECEE;
+--page-ink2:#C3C9CD;
+--rail:#0E1113;
+--bay:#262C30;
+--ink:#E9ECEE;
+--ink2:#C3C9CD;
+--muted:#A8B0B5;
+--line:#9AA3A9;
+--rule:#3A4247;
+--err:#FF9E94;
+--switch:#121619;
+--focus:#F2B705;
+--focus-rail:#F2B705;
+--btn:#E9ECEE;
+--btn-ink:#121619;
+--slider:#F2B705;
+}
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding:0 1rem 3rem;overflow-wrap:anywhere}
-.wrap{max-width:52rem;margin-inline:auto}
-header{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem 0;border-bottom:1px solid var(--line)}
-h1{font-size:1.5rem;margin:0;margin-inline-end:auto}
-button{font:inherit;min-height:48px;min-width:48px;padding:.625rem 1.25rem;border:1.5px solid var(--accent);border-radius:var(--radius);background:var(--accent);color:var(--accent-fg);font-weight:700;cursor:pointer}
-button.secondary{background:var(--bg);color:var(--accent)}
-button:disabled{opacity:.6;cursor:not-allowed}
-:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-.banner{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+body{margin:0;padding:0 0 3rem;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink);overflow-wrap:break-word;text-align:start}
+.wrap{max-inline-size:80rem;margin-inline:auto;padding-inline:1rem}
+header{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem;background:var(--rail);color:var(--rail-ink);border:2px solid var(--rail);border-block-end-width:3px}
+.brand{display:flex;align-items:baseline;gap:.625rem;flex-wrap:wrap;margin-inline-end:auto;min-inline-size:0}
+/* Fluid but capped below 1.5x body: the live power reading is the only
+enlarged text on the page (see .watts). */
+h1{margin:0;font-size:clamp(1.125rem,1rem + .4vw,1.375rem);line-height:1.25;font-weight:700;text-wrap:balance;color:var(--rail-ink)}
+.home-tag{font-size:.875rem;color:var(--rail-ink2)}
+header .bar{display:flex;gap:.5rem;flex-wrap:wrap}
+button{font:inherit;font-size:1rem;min-block-size:2.75rem;min-inline-size:2.75rem;padding:.5rem .875rem;border:1.5px solid var(--line);border-radius:0;background:var(--bay);color:var(--ink);font-weight:600;cursor:pointer}
+button.primary{background:var(--ink);color:var(--bay);border-color:var(--ink)}
+header button{background:transparent;color:var(--rail-ink);border-color:var(--rail-ink2)}
+header button.primary{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+button:disabled{cursor:not-allowed}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+header :focus-visible{outline-color:var(--focus-rail)}
+main{padding-block-start:.5rem}
+.status{margin:.75rem 0 .25rem;color:var(--page-ink2);font-size:.9375rem}
+.section-title{margin:1rem 0 .5rem;font-size:1rem;font-weight:600;color:var(--page-ink);text-wrap:balance}
+.banner{background:var(--bay);color:var(--ink);border:2px solid var(--err);padding:.75rem 1rem;margin:.75rem 0;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 .banner[hidden]{display:none}
-.banner .banner-text{flex:1 1 16rem;min-width:0}
-.banner code{display:block;overflow-wrap:anywhere;word-break:break-word;margin-block:.25rem;padding:.5rem .75rem;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius)}
-.err-box{background:var(--err-bg);color:var(--err-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0}
-.empty-box{border:1px dashed var(--line);border-radius:var(--radius);padding:1.25rem;margin:1rem 0;color:var(--muted)}
-#status-msg{color:var(--muted)}
-ul.devices{list-style:none;margin:1rem 0;padding:0;display:grid;gap:.75rem;grid-template-columns:1fr}
-@media (min-width:40rem){ul.devices{grid-template-columns:1fr 1fr}}
-li.device{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;display:flex;flex-direction:column;gap:.375rem;min-width:0}
-.name{font-weight:700;font-size:1.0625rem}
-.meta{color:var(--muted);font-size:.9375rem;margin:0;overflow-wrap:anywhere;word-break:break-word}
-.badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-block:.25rem}
-.badge{display:inline-block;border:1px solid var(--line);border-radius:var(--radius);padding:.125rem .5rem;font-size:.875rem;font-weight:600}
-.badge.ok{color:var(--ok)}
-.state{font-weight:600;margin:0}
-.sync-note{color:var(--muted);font-weight:600}
-.err-text{color:var(--err-fg);font-weight:600;margin:0}
-.controls{margin-top:auto;display:flex;flex-direction:column;gap:.75rem;align-items:stretch;min-width:0}
-.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
-.field{display:flex;flex-direction:column;gap:.125rem;min-width:0}
+.banner .banner-text{flex:1 1 16rem;min-inline-size:0}
+.banner code{display:block;overflow-wrap:anywhere;margin-block:.25rem;padding:.5rem .75rem;background:var(--page);color:var(--page-ink);border:1px solid var(--line)}
+.enclosure{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;padding:.75rem;margin:.75rem 0 1rem;background:var(--page);border:2px solid var(--line)}
+@media (min-width:64rem){.enclosure{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bay{background:var(--bay);border:1px solid var(--line);min-inline-size:0}
+.bay-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;padding:.5rem .75rem;border-block-end:2px solid var(--line)}
+.bay-head h3{margin:0;font-size:1.0625rem;line-height:1.3;font-weight:700;text-wrap:balance}
+.backend{font-size:.8125rem;font-weight:600;color:var(--ink2);border:1px solid var(--line);padding:.0625rem .375rem}
+.breakers{list-style:none;margin:0;padding:0}
+li.device{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"id ctl" "read ctl";gap:.25rem .75rem;align-items:start;padding:.625rem .75rem;border-block-start:1px solid var(--rule);min-inline-size:0}
+li.device:first-child{border-block-start:0}
+.dev-id{grid-area:id;min-inline-size:0}
+.name{font-weight:600;font-size:1rem;overflow-wrap:anywhere}
+.dev-read{grid-area:read;min-inline-size:0}
+.dev-ctl{grid-area:ctl;display:flex;flex-direction:column;align-items:center;gap:.25rem;align-self:center}
+.ctl-slot{display:flex;flex-direction:column;align-items:center}
+.state{margin:0;font-size:.875rem;color:var(--ink2)}
+.sync-note{color:var(--ink2);font-weight:600}
+.err-text{color:var(--err);font-weight:600;font-size:.875rem;margin:.25rem 0 0}
+.power{display:flex;align-items:baseline;gap:.25rem;margin:.125rem 0}
+.watts{display:inline-block;font-size:clamp(1.75rem,1.2rem + 1.8vw,2.5rem);line-height:1.3;font-weight:600;font-variant-numeric:tabular-nums}
+.unit{font-size:.9375rem;font-weight:600;color:var(--ink2)}
+.tele{margin-block-start:.375rem;min-inline-size:0}
+.tele h3{margin:0 0 .125rem;font-size:.8125rem;font-weight:600;color:var(--ink2)}
+.tele ul{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:.125rem 1rem}
+.tele li{display:flex;gap:.375rem;align-items:baseline;font-size:.875rem}
+.tlabel{color:var(--muted)}
+.tval{font-weight:600;font-variant-numeric:tabular-nums}
+.note{margin:.125rem 0;font-size:.875rem;color:var(--ink2)}
+.ctrls{display:grid;grid-template-columns:minmax(0,1fr);gap:.5rem;margin-block-start:.375rem;min-inline-size:0}
+@media (min-width:64rem){.ctrls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.field{display:flex;flex-direction:column;gap:.125rem;min-inline-size:0}
 .field-head{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap}
-.field-head label{font-weight:600}
-.val{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.readonly{border:1px solid var(--line);border-radius:var(--radius);padding:.5rem .75rem;color:var(--muted);margin:0;overflow-wrap:anywhere;word-break:break-word}
-.readonly strong{color:var(--fg)}
-input[type="range"]{accent-color:var(--accent);width:100%;min-height:44px;margin:0;cursor:pointer}
-input[type="range"]:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-select,input[type="number"],input[type="text"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.625rem .75rem;border:1.5px solid var(--line);border-radius:var(--radius);color:var(--fg);background:var(--bg);width:100%}
-.tele{border-top:1px solid var(--line);padding-top:.5rem;margin-top:.25rem;min-width:0}
-.tele h3{font-size:1rem;margin:0 0 .25rem}
-.tele ul{list-style:none;margin:.25rem 0 0;padding:0;display:grid;gap:.25rem}
-.tele li{display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;overflow-wrap:anywhere}
-.tele .tval{font-weight:700;font-variant-numeric:tabular-nums}
-.tele .tlabel{color:var(--muted)}
-dialog:modal{overscroll-behavior:contain;max-width:min(30rem,92vw);border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);color:var(--fg);padding:1.5rem}
+.field-head label{font-weight:600;font-size:.875rem}
+.val{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctrl-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;grid-column:1 / -1;min-inline-size:0}
+.ctrl-row .field{flex:1 1 8rem;min-inline-size:0}
+input[type="range"]{width:100%;min-block-size:2.75rem;margin:0;accent-color:var(--slider);cursor:pointer}
+select,input[type="number"],input[type="text"],input[type="password"]{font:inherit;font-size:max(1rem,1em);min-block-size:2.75rem;padding:.5rem .625rem;border:1.5px solid var(--line);border-radius:0;background:var(--bay);color:var(--ink);width:100%}
+/* break-word, not anywhere: a missing space in a trait name must not split
+ordinary words at 200% zoom. */
+.ro{margin:.125rem 0;font-size:.8125rem;color:var(--ink2);overflow-wrap:break-word}
+.device-empty{background:var(--bay);color:var(--ink2);border:2px dashed var(--line);padding:1rem;margin:0}
+.err-box{background:var(--bay);color:var(--ink);border:2px solid var(--err);padding:.75rem 1rem;margin:0}
+.err-box button{margin-block-start:.75rem}
+.rocker{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:.25rem;inline-size:3.5rem;min-block-size:4.5rem;padding:.5rem .25rem;background:var(--switch);color:var(--switch-ink);border:1.5px solid var(--line);border-radius:3px;cursor:pointer}
+.rocker .led{flex:none;inline-size:.625rem;block-size:.625rem;border-radius:50%;border:1.5px solid var(--switch-ink);background:transparent}
+.rocker[aria-checked="true"] .led{background:var(--amber);border-color:var(--amber)}
+.rocker .paddle{flex:none;inline-size:1.75rem;block-size:.5rem;background:var(--switch-ink);border-radius:2px}
+.rocker .pos{flex:none;font-size:.75rem;font-weight:600;line-height:1.5}
+.rocker.offline{background:transparent;color:var(--ink);border:2px dashed var(--line);justify-content:center;cursor:not-allowed;font-size:.75rem}
+.action{min-inline-size:3.5rem;min-block-size:4.5rem;padding:.5rem .625rem;background:var(--switch);color:var(--switch-ink);border:1.5px solid var(--line);border-radius:3px}
+.guard{display:block;max-inline-size:100%;margin-block-end:.25rem;padding:.0625rem .25rem;text-align:center;overflow-wrap:break-word;background:var(--bay);border:2px double var(--line);font-size:.75rem;font-weight:600;color:var(--ink);pointer-events:none}
+@media (prefers-reduced-motion:no-preference){
+.rocker .paddle,.rocker .led{transition:transform .12s ease-out,background-color .12s ease-out,border-color .12s ease-out}
+.rocker[aria-checked="true"] .paddle{transform:translateY(-2px)}
+}
+dialog{overscroll-behavior:contain;max-inline-size:min(30rem,92vw);border:2px solid var(--line);border-radius:0;background:var(--bay);color:var(--ink);padding:1.25rem}
 dialog::backdrop{overflow:hidden;overscroll-behavior:contain;background:rgb(0 0 0 / .55)}
-dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem;flex-wrap:wrap}
-.qr-box{background:#ffffff;border:2px solid #111418;border-radius:var(--radius);padding:1rem;min-height:140px;display:flex;align-items:center;justify-content:center;overflow:auto;color:#111418}
-.qr-box svg{max-width:100%;height:auto}
+dialog h2{margin:0 0 .5rem;font-size:1.125rem;line-height:1.3}
+dialog p{margin:.25rem 0}
+dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-block-start:1.25rem;flex-wrap:wrap}
+dialog .danger-note{color:var(--err);font-weight:600}
+.qr-box{background:#ffffff;border:2px solid #111418;padding:1rem;min-block-size:140px;display:flex;align-items:center;justify-content:center;overflow:auto;color:#111418}
+.qr-box svg{max-inline-size:100%;block-size:auto}
 .visually-hidden{position:absolute !important;clip-path:inset(50%) !important;overflow:hidden !important;width:1px !important;height:1px !important;margin:-1px !important;padding:0 !important;border:0 !important;white-space:nowrap !important}
-@media (max-width:22.5rem){body{padding:0 .75rem 3rem}header{gap:.5rem}button{padding:.625rem 1rem}}
+@media (max-width:22.5rem){.wrap{padding-inline:.75rem}body{font-size:1rem}}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-<h1>home</h1>
-<button type="button" id="refresh">Refresh</button>
-<button type="button" id="signout" class="secondary">Sign out</button>
+<div class="brand">
+<h1 lang="zh-Hans">家里的配电箱</h1>
+<span class="home-tag">home</span>
+</div>
+<div class="bar">
+<button type="button" id="refresh" class="primary">Refresh</button>
+<button type="button" id="signout">Sign out</button>
+</div>
 </header>
 <main>
 <div class="banner" id="backend-banner" aria-live="polite" hidden></div>
-<p id="status-msg" role="status" aria-live="polite"></p>
+<p id="status-msg" class="status" role="status" aria-live="polite"></p>
 <section aria-labelledby="list-heading">
-<h2 id="list-heading" style="font-size:1.25rem">Devices</h2>
+<h2 id="list-heading" class="section-title">Breakers</h2>
 <div id="list-slot"></div>
 </section>
 </main>
 </div>
 <dialog id="confirm-dialog" aria-labelledby="confirm-title">
-<h2 id="confirm-title" style="margin:0 0 .5rem;font-size:1.125rem">Confirm</h2>
+<h2 id="confirm-title">Confirm sensitive action</h2>
 <p id="confirm-text"></p>
 <div class="actions">
-<button type="button" id="confirm-cancel" class="secondary" autofocus>Cancel</button>
-<button type="button" id="confirm-ok">Confirm</button>
+<button type="button" id="confirm-cancel" autofocus>Cancel</button>
+<button type="button" id="confirm-ok" class="primary">Confirm</button>
 </div>
 </dialog>
+<dialog id="pw-dialog" aria-labelledby="pw-title">
+<h2 id="pw-title">Panel password</h2>
+<p id="pw-text" class="note"></p>
+<form id="pw-form" method="dialog">
+<label for="pw-input">Password</label>
+<input id="pw-input" name="password" type="password" autocomplete="current-password" required>
+<p id="pw-err" class="err-text" role="alert" hidden></p>
+<div class="actions">
+<button type="button" id="pw-cancel" autofocus>Cancel</button>
+<button type="submit" id="pw-ok" class="primary">Continue</button>
+</div>
+</form>
+</dialog>
 <dialog id="qr-dialog" aria-labelledby="qr-title">
-<h2 id="qr-title" style="margin:0 0 .5rem;font-size:1.125rem">Sign in to Tuya</h2>
-<p id="qr-hint" class="meta" style="margin:0 0 .75rem"></p>
+<h2 id="qr-title">Sign in to Tuya</h2>
+<p id="qr-hint" class="note"></p>
 <div class="field">
 <label for="qr-code">User code (optional)</label>
 <input id="qr-code" name="user_code" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done">
 </div>
 <div class="actions" style="justify-content:flex-start;margin-top:.75rem">
-<button type="button" id="qr-generate">Generate QR code</button>
-<button type="button" id="qr-close" class="secondary">Close</button>
+<button type="button" id="qr-generate" class="primary">Generate QR code</button>
+<button type="button" id="qr-close">Close</button>
 </div>
 <p id="qr-status" role="status" aria-live="polite" style="margin:.75rem 0 0"></p>
 <p id="qr-err" class="err-text" role="alert" hidden></p>
@@ -121,25 +221,67 @@ function errText(j){if(!j||!j.error)return "Request failed";var e=j.error;if(e.m
 function errCode(j){return (j&&j.error&&j.error.code)||"";}
 function isReauth(j,status){return status===424||errCode(j)==="reauth_required";}
 
+// --- dialogs -------------------------------------------------------------
 var dialog=$("confirm-dialog");
-var pending=null;
-function confirmed(cb){pending=cb;$("confirm-ok").textContent="Confirm";dialog.showModal();}
-dialog.addEventListener("cancel",function(){pending=null;});
-dialog.addEventListener("close",function(){pending=null;});
-$("confirm-cancel").addEventListener("click",function(){dialog.close();});
-$("confirm-ok").addEventListener("click",function(){var cb=pending;pending=null;dialog.close();if(cb)cb();});
-function confirmAction(title,text,okLabel,cb){
-  $("confirm-title").textContent=title;
-  $("confirm-text").textContent=text;
-  $("confirm-ok").textContent=okLabel;
-  confirmed(cb);
+var confirmResolve=null;
+function askConfirm(title,text,okLabel){
+  return new Promise(function(resolve){
+    $("confirm-title").textContent=title;
+    $("confirm-text").textContent=text;
+    $("confirm-ok").textContent=okLabel;
+    confirmResolve=resolve;
+    dialog.showModal();
+  });
 }
+function settleConfirm(value){
+  var r=confirmResolve;confirmResolve=null;
+  if(dialog.open)dialog.close();
+  if(r)r(value);
+}
+dialog.addEventListener("cancel",function(){settleConfirm(false);});
+dialog.addEventListener("close",function(){settleConfirm(false);});
+$("confirm-cancel").addEventListener("click",function(){settleConfirm(false);});
+$("confirm-ok").addEventListener("click",function(){settleConfirm(true);});
+
+// The override password lives only in the input and in the request body that
+// reads it. It is cleared on open, submit, cancel and close, and never kept in
+// a variable that outlives the POST built from it.
+var pwDialog=$("pw-dialog");
+var pwResolve=null;
+// Resolves with a function that puts the password into one request body and
+// immediately empties the input, or null when the operator cancels. The value
+// is never held in a variable, storage or a URL.
+function askPassword(dev){
+  return new Promise(function(resolve){
+    $("pw-text").textContent="Enter the panel password to operate "+dev.name+" once. It goes out with this one request and is not stored.";
+    $("pw-err").hidden=true;
+    $("pw-input").value="";
+    pwResolve=resolve;
+    if(!pwDialog.open)pwDialog.showModal();
+    $("pw-input").focus();
+  });
+}
+function settlePassword(value){
+  var r=pwResolve;pwResolve=null;
+  if(pwDialog.open)pwDialog.close();
+  $("pw-input").value="";
+  if(r)r(value);
+}
+pwDialog.addEventListener("cancel",function(){settlePassword(null);});
+pwDialog.addEventListener("close",function(){$("pw-input").value="";});
+$("pw-cancel").addEventListener("click",function(){settlePassword(null);});
+$("pw-form").addEventListener("submit",function(e){
+  e.preventDefault();
+  var input=$("pw-input");
+  if(!input.value){input.reportValidity();return;}
+  settlePassword(input.value);
+});
 
 var tuyaUserCodeConfigured=false;
 function clearBanner(){var b=$("backend-banner");b.textContent="";b.innerHTML="";b.hidden=true;}
 function makeBtn(text,secondary,handler){
   var b=document.createElement("button");b.type="button";b.textContent=text;
-  if(secondary)b.className="secondary";
+  if(!secondary)b.className="primary";
   b.addEventListener("click",handler);
   return b;
 }
@@ -291,23 +433,32 @@ function pollQr(token,code){
   tick();
 }
 
+// --- rows and groups -----------------------------------------------------
 function rowsFor(devices,data){
   var protectedList=(data&&data.protected)||[];
   var list=[];
   (devices.google_home||[]).forEach(function(d){
     var key=(d.backend||"google_home")+":"+d.id;
     var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
-    list.push({backend:"google_home",label:"Google Home",id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind,_seq:0});
+    list.push({backend:"google_home",label:"Google Home",group:(d.room&&String(d.room).trim())||"Other",id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind,_seq:0});
   });
   (devices.tuya||[]).forEach(function(d){
     var key=(d.backend||"tuya")+":"+d.id;
     var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
-    list.push({backend:"tuya",label:"Tuya",id:d.id,name:d.name,room:null,traits:[],isProtected:isP,online:d.online,category:d.category,_seq:0});
+    list.push({backend:"tuya",label:"Tuya",group:"Smart Life",id:d.id,name:d.name,room:null,traits:[],isProtected:isP,online:d.online,category:d.category,_seq:0});
   });
   return list;
 }
 function rowsKey(rows){
-  return rows.map(function(d){return d.backend+":"+d.id+"|"+d.name+"|"+(d.room||"")+"|"+d.isProtected;}).join(",");
+  return rows.map(function(d){return d.backend+":"+d.id+"|"+d.name+"|"+d.group+"|"+d.isProtected;}).join(",");
+}
+function groupRows(rows){
+  var order=[];var map={};
+  rows.forEach(function(dev){
+    if(!map[dev.group]){map[dev.group]={name:dev.group,backend:dev.label,rows:[]};order.push(dev.group);}
+    map[dev.group].rows.push(dev);
+  });
+  return order.map(function(k){return map[k];});
 }
 function renderRows(rows){
   var slot=$("list-slot");
@@ -320,10 +471,9 @@ function renderRows(rows){
     rows.forEach(function(now,i){
       now._stateEl=old[i]._stateEl;now._errEl=old[i]._errEl;
       now._controlsEl=old[i]._controlsEl;now._teleEl=old[i]._teleEl;
-      now._badgeEl=old[i]._badgeEl;
+      now._switchEl=old[i]._switchEl;
       // Keep the optimistic sequence so an in-flight read can still win.
       now._seq=old[i]._seq;now._state=old[i]._state;now._online=old[i]._online;
-      if(now._badgeEl)now._badgeEl.textContent=now.online===false?"offline":"online";
     });
     slot._rows=rows;
     rows.forEach(function(dev){fetchState(dev);});
@@ -334,61 +484,80 @@ function renderRows(rows){
   slot._key=key;
   if(!rows.length){
     var box=document.createElement("div");
-    box.className="empty-box";
+    box.className="device-empty";
     box.textContent="No devices found. Check that both backends are logged in.";
     slot.appendChild(box);
     return;
   }
-  var ul=document.createElement("ul");
-  ul.className="devices";
-  rows.forEach(function(dev){
-    var li=document.createElement("li");
-    li.className="device";
+  var enclosure=document.createElement("div");
+  enclosure.className="enclosure";
+  groupRows(rows).forEach(function(group){
+    var bay=document.createElement("section");
+    bay.className="bay";
+    bay.setAttribute("aria-label",group.name+" devices, "+group.backend);
     var head=document.createElement("div");
-    head.className="name";
-    head.textContent=dev.name+(dev.room?" ("+dev.room+")":"");
-    li.appendChild(head);
-    var badges=document.createElement("div");
-    badges.className="badges";
-    var b1=document.createElement("span");b1.className="badge ok";b1.textContent=dev.label;badges.appendChild(b1);
-    var b2=document.createElement("span");b2.className="badge";b2.textContent=dev.online===false?"offline":"online";badges.appendChild(b2);
-    dev._badgeEl=b2;
-    if(dev.isProtected){var b3=document.createElement("span");b3.className="badge";b3.textContent="protected";badges.appendChild(b3);}
-    li.appendChild(badges);
-    var meta=document.createElement("p");
-    meta.className="meta";
-    meta.textContent=dev.label+" "+dev.id;
-    li.appendChild(meta);
-    var state=document.createElement("p");
-    state.className="state";
-    state.textContent="Loading state...";
-    li.appendChild(state);
-    var err=document.createElement("p");
-    err.className="err-text";
-    err.setAttribute("role","alert");
-    err.hidden=true;
-    li.appendChild(err);
-    var controls=document.createElement("div");
-    controls.className="controls";
-    li.appendChild(controls);
-    var tele=null;
-    if(dev.backend==="tuya"){
-      tele=document.createElement("div");
-      tele.className="tele";
-      li.appendChild(tele);
-    }
-    ul.appendChild(li);
-    dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;
+    head.className="bay-head";
+    var h=document.createElement("h3");
+    h.textContent=group.name;
+    var b=document.createElement("span");
+    b.className="backend";
+    b.textContent=group.backend;
+    head.appendChild(h);head.appendChild(b);
+    bay.appendChild(head);
+    var ul=document.createElement("ul");
+    ul.className="breakers";
+    group.rows.forEach(function(dev){
+      var li=document.createElement("li");
+      li.className="device";
+      var idBox=document.createElement("div");
+      idBox.className="dev-id";
+      var name=document.createElement("div");
+      name.className="name";
+      name.textContent=dev.name;
+      idBox.appendChild(name);
+      li.appendChild(idBox);
+      var read=document.createElement("div");
+      read.className="dev-read";
+      li.appendChild(read);
+      var state=document.createElement("p");
+      state.className="state";
+      state.textContent="Loading state...";
+      read.appendChild(state);
+      var err=document.createElement("p");
+      err.className="err-text";
+      err.setAttribute("role","alert");
+      err.hidden=true;
+      read.appendChild(err);
+      var controls=document.createElement("div");
+      controls.className="ctrls";
+      read.appendChild(controls);
+      var tele=null;
+      if(dev.backend==="tuya"){
+        tele=document.createElement("div");
+        tele.className="tele";
+        read.appendChild(tele);
+      }
+      var ctl=document.createElement("div");
+      ctl.className="dev-ctl";
+      var slotEl=document.createElement("div");
+      slotEl.className="ctl-slot";
+      ctl.appendChild(slotEl);
+      li.appendChild(ctl);
+      ul.appendChild(li);
+      dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;dev._switchEl=slotEl;
+    });
+    bay.appendChild(ul);
+    enclosure.appendChild(bay);
   });
-  slot.appendChild(ul);
+  slot.appendChild(enclosure);
   rows.forEach(function(dev){fetchState(dev);});
 }
 function showError(text){
   var slot=$("list-slot");slot.textContent="";
+  slot._key=null;
   var box=document.createElement("div");box.className="err-box";box.setAttribute("role","alert");
   box.textContent="Error: "+text;
   var btn=document.createElement("button");btn.type="button";btn.textContent="Retry";
-  btn.style.marginTop="1rem";
   btn.addEventListener("click",function(){load();});
   box.appendChild(document.createElement("br"));
   box.appendChild(btn);
@@ -396,6 +565,7 @@ function showError(text){
   $("status-msg").textContent="";
 }
 
+// --- device state --------------------------------------------------------
 function ghTraits(dev){return dev._state&&dev._state.traits?dev._state.traits:{};}
 function tuyaPts(dev){return dev._state&&dev._state.data_points?dev._state.data_points:[];}
 function isCalib(code){return code.toLowerCase().indexOf("calib")!==-1;}
@@ -426,7 +596,7 @@ function rollback(dev,snap,msg){
   if(dev.backend==="google_home"&&t.deviceStatus&&typeof t.deviceStatus.online==="boolean")dev._online=t.deviceStatus.online;
   if(dev.backend!=="google_home"&&snap&&typeof snap.online==="boolean")dev._online=snap.online;
   buildControl(dev,snap);
-  dev._stateEl.textContent=stateSummary(dev,snap)+" (change failed)";
+  dev._stateEl.textContent=stateSummary(dev,snap);
   dev._errEl.textContent="Error: "+msg;
   dev._errEl.hidden=false;
 }
@@ -438,34 +608,62 @@ function setSyncing(dev){
   var n=document.createElement("span");n.className="sync-note";n.textContent="Syncing...";
   dev._stateEl.appendChild(n);
 }
-function optimistic(dev,mutate,postFn){
-  var snap=snapshot(dev);
-  dev._seq+=1;
-  if(mutate&&dev._state)mutate(dev._state);
-  setSyncing(dev);
-  buildControl(dev,dev._state);
-  postFn().then(function(pair){
-    var status=pair[0];var j=pair[1];
-    if(j&&j.error){
-      if(isReauth(j,status))renderReauthBanner(dev.backend);
-      rollback(dev,snap,errText(j));
-      return;
-    }
-    fetchState(dev);
-  }).catch(function(e){rollback(dev,snap,e.message);});
-}
 function postForm(path,body){
   return fetch(path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
   .then(function(r){return r.json().then(function(j){return [r.status,j];}).catch(function(){return [r.status,{error:{message:"Bad response"}}];});});
 }
+
+// One write path for every control, so the guards cannot be skipped by a
+// control added later. A Sensitive Action asks first; a protected Device asks
+// for the one-time password next; a cancel at either step rebuilds the
+// controls from the snapshot and sends nothing.
+function guardedWrite(dev,opts){
+  var snap=snapshot(dev);
+  function step(){
+    if(!dev.isProtected)return run(null);
+    return askPassword(dev).then(function(password){
+      if(!password){buildControl(dev,snap);return;}
+      return run(password);
+    });
+  }
+  function run(password){
+    dev._seq+=1;
+    if(opts.mutate&&dev._state)opts.mutate(dev._state);
+    setSyncing(dev);
+    buildControl(dev,dev._state);
+    var body=new URLSearchParams(opts.params);
+    // The one-time override is written into this request body and nowhere
+    // else; the dialog input was already cleared synchronously.
+    if(password)body.set("password",password);
+    return postForm(opts.path,body).then(function(pair){
+      var status=pair[0];var j=pair[1];
+      if(j&&j.error){
+        if(isReauth(j,status))renderReauthBanner(dev.backend);
+        var code=errCode(j);
+        rollback(dev,snap,code==="rate_limited"?"Too many failed password attempts. Wait, then try again.":errText(j));
+        return;
+      }
+      fetchState(dev);
+    }).catch(function(e){rollback(dev,snap,e.message);});
+  }
+  if(opts.sensitive){
+    return askConfirm(opts.sensitiveTitle,opts.sensitiveText,opts.sensitiveLabel).then(function(ok){
+      if(!ok){buildControl(dev,snap);return;}
+      return step();
+    });
+  }
+  return step();
+}
 function ghSetPost(dev,params){
-  var body=new URLSearchParams({device:dev.id});
-  Object.keys(params).forEach(function(k){body.set(k,String(params[k]));});
-  return postForm("/api/gh/set",body);
+  var p={device:dev.id};
+  Object.keys(params).forEach(function(k){
+    if(params[k]===undefined||params[k]===null)return;
+    p[k]=String(params[k]);
+  });
+  return {path:"/api/gh/set",params:p};
 }
 function tuyaSetPost(dev,onVal){
-  var path=onVal?"/api/tuya/on":"/api/tuya/off";
-  return postForm(path,new URLSearchParams({device:dev.id}));
+  return {path:onVal?"/api/tuya/on":"/api/tuya/off",params:{device:dev.id}};
 }
 
 function fetchState(dev){
@@ -506,9 +704,7 @@ function fetchState(dev){
   });
 }
 
-function readonlyRow(text){
-  var p=document.createElement("p");p.className="readonly";p.textContent=text;return p;
-}
+// --- telemetry -----------------------------------------------------------
 function fmtTeleVal(entry){
   var v=(entry&&typeof entry.value!=="undefined"&&entry.value!==null)?entry.value:(entry?entry.raw:"");
   var s="";
@@ -522,30 +718,54 @@ function renderTelemetry(dev,mode,payload){
   el.textContent="";
   var h=document.createElement("h3");h.textContent="Telemetry";el.appendChild(h);
   if(mode==="loading"){
-    var p=document.createElement("p");p.className="meta";p.textContent="Loading telemetry...";el.appendChild(p);return;
+    var p=document.createElement("p");p.className="note";p.textContent="Loading telemetry...";el.appendChild(p);return;
   }
   if(mode==="error"){
-    var e=document.createElement("p");e.className="err-text";e.setAttribute("role","alert");e.textContent="Telemetry error: "+payload;el.appendChild(e);
-    el.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
+    // An offline plug cannot answer for its readings, and the row already
+    // says so next to the switch: one quiet note beats a second red line.
+    var off=String(payload).toLowerCase().indexOf("offline")!==-1;
+    var e=document.createElement("p");
+    e.className=off?"note":"err-text";
+    if(!off)e.setAttribute("role","alert");
+    e.textContent=off?"Telemetry unavailable while the device is offline.":"Telemetry error: "+payload;
+    el.appendChild(e);
+    if(!off)el.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
     return;
   }
   var tele=payload||{};
   var keys=Object.keys(tele);
   if(!keys.length){
-    var q=document.createElement("p");q.className="meta";q.textContent="No telemetry readings reported.";el.appendChild(q);return;
+    var q=document.createElement("p");q.className="note";q.textContent="No telemetry readings reported.";el.appendChild(q);return;
   }
-  var order=["cur_power","cur_current","cur_voltage","add_ele"];
+  // Power is the one enlarged reading in the whole panel. Everything else
+  // stays small so the eye lands on the breaker's live load.
+  var power=tele.cur_power;
+  if(power){
+    var row=document.createElement("p");row.className="power";
+    var w=document.createElement("span");w.className="watts";
+    w.textContent=String(Number(Number(power.value!==undefined?power.value:power.raw).toFixed(1)));
+    var u=document.createElement("span");u.className="unit";u.textContent=power.unit?String(power.unit):"W";
+    row.appendChild(w);row.appendChild(u);el.appendChild(row);
+  }
+  var order=["cur_current","cur_voltage","add_ele"];
   var labels={cur_power:"Power",cur_current:"Current",cur_voltage:"Voltage",add_ele:"Energy"};
-  var ordered=order.filter(function(k){return keys.indexOf(k)!==-1;})
+  var rest=order.filter(function(k){return keys.indexOf(k)!==-1&&k!=="cur_power";})
     .concat(keys.filter(function(k){return order.indexOf(k)===-1;}).sort());
-  var ul=document.createElement("ul");
-  ordered.forEach(function(k){
-    var li=document.createElement("li");
-    var l=document.createElement("span");l.className="tlabel";l.textContent=labels[k]||k;
-    var v=document.createElement("span");v.className="tval";v.textContent=fmtTeleVal(tele[k]);
-    li.appendChild(l);li.appendChild(v);ul.appendChild(li);
-  });
-  el.appendChild(ul);
+  if(rest.length){
+    var ul=document.createElement("ul");
+    rest.forEach(function(k){
+      var li=document.createElement("li");
+      var l=document.createElement("span");l.className="tlabel";l.textContent=labels[k]||k;
+      var v=document.createElement("span");v.className="tval";v.textContent=fmtTeleVal(tele[k]);
+      li.appendChild(l);li.appendChild(v);ul.appendChild(li);
+    });
+    el.appendChild(ul);
+  }
+}
+
+// --- controls ------------------------------------------------------------
+function readonlyRow(text){
+  var p=document.createElement("p");p.className="ro";p.textContent=text;return p;
 }
 function sliderField(dev,labelText,min,max,step,initial,fmt,onSubmit){
   var wrap=document.createElement("div");wrap.className="field";
@@ -566,20 +786,48 @@ function sliderField(dev,labelText,min,max,step,initial,fmt,onSubmit){
   wrap.appendChild(input);
   return wrap;
 }
-function switchButton(dev,labelText,onVal,handler){
+// The tactile flip switch. A real button with role="switch", so Enter and
+// Space work and the state is announced; the LED is decoration and the visible
+// On/Off word carries the state without relying on colour.
+function switchButton(dev,onVal,onToggle){
   var b=document.createElement("button");
   b.type="button";
-  b.className="secondary";
+  b.className="rocker";
   b.setAttribute("role","switch");
   b.setAttribute("aria-checked",onVal?"true":"false");
+  var led=document.createElement("span");led.className="led";led.setAttribute("aria-hidden","true");
+  var paddle=document.createElement("span");paddle.className="paddle";paddle.setAttribute("aria-hidden","true");
+  var pos=document.createElement("span");pos.className="pos";pos.textContent=onVal?"On":"Off";
+  b.appendChild(led);b.appendChild(paddle);b.appendChild(pos);
   // Visible text stays in the accessible name (WCAG 2.5.3); the device name
   // that disambiguates switches is visually hidden instead of an aria-label.
-  b.textContent=labelText+": "+(onVal?"On":"Off");
   var hidden=document.createElement("span");
   hidden.className="visually-hidden";
-  hidden.textContent=" for "+dev.name;
+  hidden.textContent=" power for "+dev.name;
   b.appendChild(hidden);
-  b.addEventListener("click",handler);
+  b.addEventListener("click",onToggle);
+  return b;
+}
+function actionButton(dev,labelText,onClick){
+  var b=document.createElement("button");
+  b.type="button";b.className="action";b.textContent=labelText;
+  var hidden=document.createElement("span");hidden.className="visually-hidden";hidden.textContent=" "+dev.name;b.appendChild(hidden);
+  b.addEventListener("click",onClick);
+  return b;
+}
+function guardCover(){
+  // The cover is the literal word the operator asked for, not a colour cue.
+  var g=document.createElement("span");
+  g.className="guard";
+  g.textContent="protected";
+  return g;
+}
+function offlineControl(dev){
+  var b=document.createElement("button");
+  b.type="button";b.className="rocker offline";b.disabled=true;
+  b.setAttribute("aria-disabled","true");
+  b.textContent="offline";
+  var hidden=document.createElement("span");hidden.className="visually-hidden";hidden.textContent=" power for "+dev.name;b.appendChild(hidden);
   return b;
 }
 function traitKnownName(trait){
@@ -611,25 +859,20 @@ function findTraitState(t,declaredTrait){
   return [short,null];
 }
 
-function offlineControls(dev){
-  var dis=document.createElement("button");
-  dis.type="button";dis.className="secondary";dis.disabled=true;
-  dis.setAttribute("aria-disabled","true");
-  dis.textContent="Power (disabled, device offline)";
-  dis.title="Offline";
-  var disName=document.createElement("span");disName.className="visually-hidden";disName.textContent=" for "+dev.name;dis.appendChild(disName);
-  return [dis,readonlyRow("Device is offline. Reconnect it first, then press Refresh.")];
-}
 function buildControl(dev,data,err){
   // Every poll rebuilt the controls, which threw away keyboard focus in the
   // middle of a slider drag. Build off-document and swap only when the markup
   // actually changed; when it did, put focus back on the same control.
-  var target=dev._controlsEl;
+  rebuild(dev._switchEl,function(wrap){buildSwitchInto(dev,data,err,wrap);});
+  rebuild(dev._controlsEl,function(wrap){buildTraitInto(dev,data,err,wrap);});
+}
+function rebuild(target,build){
+  if(!target)return;
   var focusables=target.querySelectorAll("button,input,select");
   var focused=-1;
   for(var i=0;i<focusables.length;i++){if(focusables[i]===document.activeElement){focused=i;break;}}
   var wrap=document.createElement("div");
-  buildControlInto(dev,data,err,wrap);
+  build(wrap);
   if(wrap.innerHTML===target.innerHTML)return;
   target.textContent="";
   while(wrap.firstChild)target.appendChild(wrap.firstChild);
@@ -638,14 +881,85 @@ function buildControl(dev,data,err){
     if(next[focused])next[focused].focus();
   }
 }
-function buildControlInto(dev,data,err,wrap){
-  if(dev.isProtected){
-    wrap.appendChild(readonlyRow("protected"));
-    wrap.appendChild(readonlyRow("Protected. Read-only, controls disabled."));
+function buildSwitchInto(dev,data,err,wrap){
+  if(dev.isProtected)wrap.appendChild(guardCover());
+  if(errCode(err)==="device_offline"||(!data&&dev._online===false)||(dev._online===false&&dev.backend==="tuya")){
+    wrap.appendChild(offlineControl(dev));
     return;
   }
+  var onVal=false;var hasSwitch=false;
+  if(dev.backend==="google_home"){
+    var t=ghTraits(dev);
+    var traits=dev.traits||[];
+    var known={};
+    traits.forEach(function(tr){var k=traitKnownName(tr);if(k)known[k]=true;});
+    if(known.onOff){hasSwitch=true;onVal=!!(t.onOff&&typeof t.onOff.onOff==="boolean"&&t.onOff.onOff);}
+    if(known.lock){
+      var isLocked=t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean"?t.lockUnlock.isLocked:null;
+      wrap.appendChild(actionButton(dev,isLocked===true?"Unlock":"Lock",function(){
+        var next=!(isLocked===true);
+        guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"lockUnlock.isLocked",value:next,confirm:next?undefined:true}),{
+          sensitive:!next,
+          sensitiveTitle:"Confirm sensitive action",
+          sensitiveText:"Unlock "+dev.name+"? Confirm, then enter the panel password if this Device is protected.",
+          sensitiveLabel:"Continue",
+          mutate:function(st){if(st.traits&&st.traits.lockUnlock)st.traits.lockUnlock.isLocked=next;}
+        }));
+      }));
+      return;
+    }
+    if(known.arm){
+      var isArmed=t.armDisarm&&typeof t.armDisarm.isArmed==="boolean"?t.armDisarm.isArmed:null;
+      wrap.appendChild(actionButton(dev,isArmed===true?"Disarm":"Arm",function(){
+        var next=!(isArmed===true);
+        guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"armDisarm.isArmed",value:next,confirm:next?undefined:true}),{
+          sensitive:!next,
+          sensitiveTitle:"Confirm sensitive action",
+          sensitiveText:"Disarm "+dev.name+"? Confirm, then enter the panel password if this Device is protected.",
+          sensitiveLabel:"Continue",
+          mutate:function(st){if(st.traits&&st.traits.armDisarm)st.traits.armDisarm.isArmed=next;}
+        }));
+      }));
+      return;
+    }
+    if(known.onOff){
+      wrap.appendChild(switchButton(dev,onVal,function(){
+        var next=!onVal;
+        guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"onOff",value:next}),{
+          mutate:function(st){
+            if(!st.traits)st.traits={};if(!st.traits.onOff)st.traits.onOff={};
+            st.traits.onOff.onOff=next;
+          }
+        }));
+      }));
+    }
+    // No power switch to flip (brightness, colour, volume, thermostat): the
+    // trait sliders next to this column are the controls, so the flip slot
+    // stays empty rather than carrying a word with nothing to do.
+    return;
+  }
+  var pts=tuyaPts(dev);
+  pts.forEach(function(p){if(p.code==="switch_1"){hasSwitch=true;onVal=!!p.value;}});
+  if(hasSwitch||pts.length===0){
+    wrap.appendChild(switchButton(dev,onVal,function(){
+      var next=!onVal;
+      guardedWrite(dev,Object.assign(tuyaSetPost(dev,next),{
+        mutate:function(st){
+          var ps=st&&st.data_points?st.data_points:[];
+          var found=false;
+          ps.forEach(function(p){if(p.code==="switch_1"){p.value=next;found=true;}});
+          if(!found)ps.push({code:"switch_1",value:next});
+          if(st)st.data_points=ps;
+        }
+      }));
+    }));
+    return;
+  }
+  wrap.appendChild(readonlyRow("Read-only"));
+}
+function buildTraitInto(dev,data,err,wrap){
   if(errCode(err)==="device_offline"||(!data&&dev._online===false)){
-    offlineControls(dev).forEach(function(n){wrap.appendChild(n);});
+    wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
     return;
   }
   if(!data){
@@ -654,179 +968,13 @@ function buildControlInto(dev,data,err,wrap){
     return;
   }
   if(dev._online===false){
-    offlineControls(dev).forEach(function(n){wrap.appendChild(n);});
+    wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
     return;
   }
-  if(dev.backend==="google_home"){
-    var traits=dev.traits||[];
-    var known={};
-    traits.forEach(function(t){var k=traitKnownName(t);if(k)known[k]=true;});
-    var t=ghTraits(dev);
-    if(known.onOff){
-      var isOn=t.onOff&&typeof t.onOff.onOff==="boolean"?t.onOff.onOff:false;
-      wrap.appendChild(switchButton(dev,"Power",isOn,function(){
-        var next=!isOn;
-        optimistic(dev,function(st){
-          if(!st.traits)st.traits={};if(!st.traits.onOff)st.traits.onOff={};
-          st.traits.onOff.onOff=next;
-        },function(){return ghSetPost(dev,{trait:"onOff",value:next});});
-      }));
-    }
-    if(known.brightness){
-      var b0=t.brightness&&typeof t.brightness.brightness==="number"?t.brightness.brightness:0;
-      wrap.appendChild(sliderField(dev,"Brightness",0,100,1,b0,function(v){
-        return v+"%";
-      },function(v){
-        optimistic(dev,function(st){
-          if(!st.traits)st.traits={};if(!st.traits.brightness)st.traits.brightness={};
-          st.traits.brightness.brightness=v;
-        },function(){return ghSetPost(dev,{trait:"brightness",value:v});});
-      }));
-    }
-    if(known.color){
-      var c0=4200;
-      var cs=t.color||t.colorSetting;
-      if(cs){if(typeof cs.colorTemperature==="number")c0=cs.colorTemperature;else if(typeof cs.temperatureK==="number")c0=cs.temperatureK;}
-      wrap.appendChild(sliderField(dev,"Color temperature",1000,10000,100,c0,function(v){
-        return v+" K";
-      },function(v){
-        optimistic(dev,function(st){
-          if(!st.traits)st.traits={};
-          if(!st.traits.color)st.traits.color={};
-          st.traits.color.colorTemperature=v;
-        },function(){return ghSetPost(dev,{trait:"color.colorTemperature",value:v});});
-      }));
-    }
-    if(known.thermostat){
-      var th=t.temperatureSetting||t.thermostat||t.temperature||{};
-      var mode=th.mode||th.thermostatMode||"auto";
-      var setpoint=th.thermostatTemperatureSetpoint;
-      if(typeof setpoint!=="number")setpoint=th.thermostatSetpoint;
-      if(typeof setpoint!=="number")setpoint=th.setpoint;
-      if(typeof setpoint!=="number")setpoint=th.thermostatSetpointHigh;
-      if(typeof setpoint!=="number")setpoint=21;
-      var modes=["off","heat","cool","heatcool","auto"];
-      var row=document.createElement("div");row.className="row";
-      var f1=document.createElement("div");f1.className="field";f1.style.flex="1 1 10rem";
-      var idM=uid(dev,"mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent="Mode";f1.appendChild(lm);
-      var sel=document.createElement("select");sel.id=idM;
-      modes.forEach(function(m){
-        var o=document.createElement("option");o.value=m;o.textContent=m;sel.appendChild(o);
-      });
-      if(modes.indexOf(mode)===-1){
-        var o2=document.createElement("option");o2.value=mode;o2.textContent=mode;
-        sel.appendChild(o2);
-      }
-      sel.value=mode;
-      f1.appendChild(sel);row.appendChild(f1);
-      var f2=document.createElement("div");f2.className="field";f2.style.flex="1 1 10rem";
-      var idS=uid(dev,"setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent="Setpoint (degrees)";f2.appendChild(ls);
-      var num=document.createElement("input");
-      num.type="number";num.id=idS;num.step="0.5";num.min="-20";num.max="60";
-      num.value=String(setpoint);num.setAttribute("inputmode","decimal");
-      f2.appendChild(num);row.appendChild(f2);
-      var apply=document.createElement("button");apply.type="button";apply.textContent="Apply";
-      apply.addEventListener("click",function(){
-        var m=sel.value;var sp=Number(num.value);
-        if(isNaN(sp)){dev._errEl.textContent="Error: Enter a setpoint number.";dev._errEl.hidden=false;return;}
-        optimistic(dev,function(st){
-          if(!st.traits)st.traits={};
-          if(!st.traits.temperatureSetting)st.traits.temperatureSetting={};
-          st.traits.temperatureSetting.mode=m;
-          st.traits.temperatureSetting.thermostatTemperatureSetpoint=sp;
-        },function(){return ghSetPost(dev,{trait:"thermostat",value:sp,mode:m,setpoint:sp});});
-      });
-      row.appendChild(apply);
-      wrap.appendChild(row);
-    }
-    if(known.volume){
-      var v0=t.volume&&typeof t.volume.currentVolume==="number"?t.volume.currentVolume:0;
-      wrap.appendChild(sliderField(dev,"Volume",0,100,1,v0,function(v){
-        return v+"%";
-      },function(v){
-        optimistic(dev,function(st){
-          if(!st.traits)st.traits={};if(!st.traits.volume)st.traits.volume={};
-          st.traits.volume.currentVolume=v;
-        },function(){return ghSetPost(dev,{trait:"volume.currentVolume",value:v});});
-      }));
-    }
-    if(known.lock){
-      var isLocked=t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean"?t.lockUnlock.isLocked:null;
-      var lockBtn=document.createElement("button");
-      lockBtn.type="button";lockBtn.className="secondary";
-      lockBtn.textContent=isLocked===true?"Unlock":"Lock";
-      var lockName=document.createElement("span");lockName.className="visually-hidden";lockName.textContent=" "+dev.name;lockBtn.appendChild(lockName);
-      lockBtn.addEventListener("click",function(){
-        if(isLocked===true){
-          confirmAction("Confirm sensitive action","Unlock "+dev.name+"? Confirm to send unlock.","Unlock",function(){
-            optimistic(dev,function(st){
-              if(st.traits&&st.traits.lockUnlock)st.traits.lockUnlock.isLocked=false;
-            },function(){return ghSetPost(dev,{trait:"lockUnlock.isLocked",value:false,confirm:true});});
-          });
-        }else{
-          optimistic(dev,function(st){
-            if(st.traits&&st.traits.lockUnlock)st.traits.lockUnlock.isLocked=true;
-          },function(){return ghSetPost(dev,{trait:"lockUnlock.isLocked",value:true});});
-        }
-      });
-      wrap.appendChild(lockBtn);
-    }
-    if(known.arm){
-      var isArmed=t.armDisarm&&typeof t.armDisarm.isArmed==="boolean"?t.armDisarm.isArmed:null;
-      var armBtn=document.createElement("button");
-      armBtn.type="button";armBtn.className="secondary";
-      armBtn.textContent=isArmed===true?"Disarm":"Arm";
-      var armName=document.createElement("span");armName.className="visually-hidden";armName.textContent=" "+dev.name;armBtn.appendChild(armName);
-      armBtn.addEventListener("click",function(){
-        if(isArmed===true){
-          confirmAction("Confirm sensitive action","Disarm "+dev.name+"? Confirm to send disarm.","Disarm",function(){
-            optimistic(dev,function(st){
-              if(st.traits&&st.traits.armDisarm)st.traits.armDisarm.isArmed=false;
-            },function(){return ghSetPost(dev,{trait:"armDisarm.isArmed",value:false,confirm:true});});
-          });
-        }else{
-          optimistic(dev,function(st){
-            if(st.traits&&st.traits.armDisarm)st.traits.armDisarm.isArmed=true;
-          },function(){return ghSetPost(dev,{trait:"armDisarm.isArmed",value:true});});
-        }
-      });
-      wrap.appendChild(armBtn);
-    }
-    var renderedKeys=["deviceStatus","onOff","brightness","colorSetting","color","temperatureSetting","thermostat","temperature","volume","lockUnlock","armDisarm"];
-    traits.forEach(function(tr){
-      if(!traitKnownName(tr)){
-        var found=findTraitState(t||{},tr);
-        var short=String(tr).split(".").pop()||String(tr);
-        wrap.appendChild(readonlyRow(short+": "+stateValSummary(found[1])+" (Read-only)"));
-        if(renderedKeys.indexOf(found[0])===-1)renderedKeys.push(found[0]);
-      }
-    });
-    Object.keys(t||{}).forEach(function(k){
-      if(renderedKeys.indexOf(k)===-1){
-        wrap.appendChild(readonlyRow(k+": "+stateValSummary(t[k])+" (Read-only)"));
-      }
-    });
-    if(!Object.keys(known).length&&!traits.length){
-      wrap.appendChild(readonlyRow("No known traits on this device. State shown above is read-only."));
-    }
-  }else{
+  if(dev.backend==="tuya"){
     var pts=tuyaPts(dev);
-    var hasSwitch=false;var swVal=false;
-    pts.forEach(function(p){
-      if(p.code==="switch_1"){hasSwitch=true;swVal=!!p.value;}
-    });
-    if(hasSwitch||pts.length===0){
-      wrap.appendChild(switchButton(dev,"Power",swVal,function(){
-        var next=!swVal;
-        optimistic(dev,function(st){
-          var ps=st&&st.data_points?st.data_points:[];
-          var found=false;
-          ps.forEach(function(p){if(p.code==="switch_1"){p.value=next;found=true;}});
-          if(!found)ps.push({code:"switch_1",value:next});
-          if(st)st.data_points=ps;
-        },function(){return tuyaSetPost(dev,next);});
-      }));
-    }
+    var hasSwitch=false;
+    pts.forEach(function(p){if(p.code==="switch_1")hasSwitch=true;});
     pts.forEach(function(p){
       if(p.code==="switch_1"||isCalib(p.code))return;
       wrap.appendChild(readonlyRow(p.code+": "+stateValSummary(p.value)+" (Read-only)"));
@@ -834,9 +982,112 @@ function buildControlInto(dev,data,err,wrap){
     if(!hasSwitch&&pts.length>0){
       wrap.appendChild(readonlyRow("No power switch point on this device. Values above are read-only."));
     }
+    return;
+  }
+  var t=ghTraits(dev);
+  var traits=dev.traits||[];
+  var known={};
+  traits.forEach(function(tr){var k=traitKnownName(tr);if(k)known[k]=true;});
+  if(known.brightness){
+    var b0=t.brightness&&typeof t.brightness.brightness==="number"?t.brightness.brightness:0;
+    wrap.appendChild(sliderField(dev,"Brightness",0,100,1,b0,function(v){return v+"%";},function(v){
+      guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"brightness",value:v}),{
+        mutate:function(st){
+          if(!st.traits)st.traits={};if(!st.traits.brightness)st.traits.brightness={};
+          st.traits.brightness.brightness=v;
+        }
+      }));
+    }));
+  }
+  if(known.color){
+    var c0=4200;
+    var cs=t.color||t.colorSetting;
+    if(cs){if(typeof cs.colorTemperature==="number")c0=cs.colorTemperature;else if(typeof cs.temperatureK==="number")c0=cs.temperatureK;}
+    wrap.appendChild(sliderField(dev,"Color temperature",1000,10000,100,c0,function(v){return v+" K";},function(v){
+      guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"color.colorTemperature",value:v}),{
+        mutate:function(st){
+          if(!st.traits)st.traits={};
+          if(!st.traits.color)st.traits.color={};
+          st.traits.color.colorTemperature=v;
+        }
+      }));
+    }));
+  }
+  if(known.volume){
+    var v0=t.volume&&typeof t.volume.currentVolume==="number"?t.volume.currentVolume:0;
+    wrap.appendChild(sliderField(dev,"Volume",0,100,1,v0,function(v){return v+"%";},function(v){
+      guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"volume.currentVolume",value:v}),{
+        mutate:function(st){
+          if(!st.traits)st.traits={};if(!st.traits.volume)st.traits.volume={};
+          st.traits.volume.currentVolume=v;
+        }
+      }));
+    }));
+  }
+  if(known.thermostat){
+    var th=t.temperatureSetting||t.thermostat||t.temperature||{};
+    var mode=th.mode||th.thermostatMode||"auto";
+    var setpoint=th.thermostatTemperatureSetpoint;
+    if(typeof setpoint!=="number")setpoint=th.thermostatSetpoint;
+    if(typeof setpoint!=="number")setpoint=th.setpoint;
+    if(typeof setpoint!=="number")setpoint=th.thermostatSetpointHigh;
+    if(typeof setpoint!=="number")setpoint=21;
+    var modes=["off","heat","cool","heatcool","auto"];
+    var row=document.createElement("div");row.className="ctrl-row";
+    var f1=document.createElement("div");f1.className="field";
+    var idM=uid(dev,"mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent="Mode";f1.appendChild(lm);
+    var sel=document.createElement("select");sel.id=idM;
+    modes.forEach(function(m){
+      var o=document.createElement("option");o.value=m;o.textContent=m;sel.appendChild(o);
+    });
+    if(modes.indexOf(mode)===-1){
+      var o2=document.createElement("option");o2.value=mode;o2.textContent=mode;
+      sel.appendChild(o2);
+    }
+    sel.value=mode;
+    f1.appendChild(sel);row.appendChild(f1);
+    var f2=document.createElement("div");f2.className="field";
+    var idS=uid(dev,"setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent="Setpoint (degrees)";f2.appendChild(ls);
+    var num=document.createElement("input");
+    num.type="number";num.id=idS;num.step="0.5";num.min="-20";num.max="60";
+    num.value=String(setpoint);num.setAttribute("inputmode","decimal");
+    f2.appendChild(num);row.appendChild(f2);
+    var apply=document.createElement("button");apply.type="button";apply.textContent="Apply";
+    apply.addEventListener("click",function(){
+      var m=sel.value;var sp=Number(num.value);
+      if(isNaN(sp)){dev._errEl.textContent="Error: Enter a setpoint number.";dev._errEl.hidden=false;return;}
+      guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"thermostat",value:sp,mode:m,setpoint:sp}),{
+        mutate:function(st){
+          if(!st.traits)st.traits={};
+          if(!st.traits.temperatureSetting)st.traits.temperatureSetting={};
+          st.traits.temperatureSetting.mode=m;
+          st.traits.temperatureSetting.thermostatTemperatureSetpoint=sp;
+        }
+      }));
+    });
+    row.appendChild(apply);
+    wrap.appendChild(row);
+  }
+  var renderedKeys=["deviceStatus","onOff","brightness","colorSetting","color","temperatureSetting","thermostat","temperature","volume","lockUnlock","armDisarm"];
+  traits.forEach(function(tr){
+    if(!traitKnownName(tr)){
+      var found=findTraitState(t||{},tr);
+      var short=String(tr).split(".").pop()||String(tr);
+      wrap.appendChild(readonlyRow(short+": "+stateValSummary(found[1])+" (Read-only)"));
+      if(renderedKeys.indexOf(found[0])===-1)renderedKeys.push(found[0]);
+    }
+  });
+  Object.keys(t||{}).forEach(function(k){
+    if(renderedKeys.indexOf(k)===-1){
+      wrap.appendChild(readonlyRow(k+": "+stateValSummary(t[k])+" (Read-only)"));
+    }
+  });
+  if(!Object.keys(known).length&&!traits.length){
+    wrap.appendChild(readonlyRow("No known traits on this device. State shown above is read-only."));
   }
 }
 
+// --- polling -------------------------------------------------------------
 var pollTimer=null;
 var lastDone=0;
 var loading=false;
