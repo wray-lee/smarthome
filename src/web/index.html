@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>家里的配电箱 | home</title>
+<title>home</title>
 <style>
 :root{
 color-scheme:light dark;
@@ -56,11 +56,9 @@ color-scheme:light dark;
 body{margin:0;padding:0 0 3rem;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink);overflow-wrap:break-word;text-align:start}
 .wrap{max-inline-size:80rem;margin-inline:auto;padding-inline:1rem}
 header{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem;background:var(--rail);color:var(--rail-ink);border:2px solid var(--rail);border-block-end-width:3px}
-.brand{display:flex;align-items:baseline;gap:.625rem;flex-wrap:wrap;margin-inline-end:auto;min-inline-size:0}
 /* Fluid but capped below 1.5x body: the live power reading is the only
 enlarged text on the page (see .watts). */
-h1{margin:0;font-size:clamp(1.125rem,1rem + .4vw,1.375rem);line-height:1.25;font-weight:700;text-wrap:balance;color:var(--rail-ink)}
-.home-tag{font-size:.875rem;color:var(--rail-ink2)}
+h1{margin:0;margin-inline-end:auto;font-size:clamp(1.125rem,1rem + .4vw,1.375rem);line-height:1.25;font-weight:700;text-wrap:balance;color:var(--rail-ink)}
 header .bar{display:flex;gap:.5rem;flex-wrap:wrap}
 button{font:inherit;font-size:1rem;min-block-size:2.75rem;min-inline-size:2.75rem;padding:.5rem .875rem;border:1.5px solid var(--line);border-radius:0;background:var(--bay);color:var(--ink);font-weight:600;cursor:pointer}
 button.primary{background:var(--ink);color:var(--bay);border-color:var(--ink)}
@@ -70,13 +68,12 @@ button:disabled{cursor:not-allowed}
 :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 header :focus-visible{outline-color:var(--focus-rail)}
 main{padding-block-start:.5rem}
-.status{margin:.75rem 0 .25rem;color:var(--page-ink2);font-size:.9375rem}
-.section-title{margin:1rem 0 .5rem;font-size:1rem;font-weight:600;color:var(--page-ink);text-wrap:balance}
+.status{margin:.75rem 0 0;padding:.5rem .75rem;background:var(--bay);border:2px solid var(--line);border-block-end:0;color:var(--page-ink2);font-size:.9375rem}
 .banner{background:var(--bay);color:var(--ink);border:2px solid var(--err);padding:.75rem 1rem;margin:.75rem 0;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 .banner[hidden]{display:none}
 .banner .banner-text{flex:1 1 16rem;min-inline-size:0}
 .banner code{display:block;overflow-wrap:anywhere;margin-block:.25rem;padding:.5rem .75rem;background:var(--page);color:var(--page-ink);border:1px solid var(--line)}
-.enclosure{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;padding:.75rem;margin:.75rem 0 1rem;background:var(--page);border:2px solid var(--line)}
+.enclosure{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;padding:.75rem;margin:0 0 1rem;background:var(--page);border:2px solid var(--line)}
 @media (min-width:64rem){.enclosure{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bay{background:var(--bay);border:1px solid var(--line);min-inline-size:0}
 .bay-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;padding:.5rem .75rem;border-block-end:2px solid var(--line)}
@@ -116,6 +113,20 @@ select,input[type="number"],input[type="text"],input[type="password"]{font:inher
 /* break-word, not anywhere: a missing space in a trait name must not split
 ordinary words at 200% zoom. */
 .ro{margin:.125rem 0;font-size:.8125rem;color:var(--ink2);overflow-wrap:break-word}
+/* Raw read-only readings collapse behind one native disclosure per row, so the
+default row is name, state, one reading and the switch. */
+details{margin-block-start:.25rem}
+summary{display:inline-flex;align-items:center;gap:.375rem;min-block-size:2.75rem;font-size:.875rem;font-weight:600;color:var(--ink2);cursor:pointer;list-style-position:inside}
+summary::before{content:"+";display:inline-block;inline-size:1rem;font-weight:700}
+details[open] summary::before{content:"\2212"}
+details[open] summary{margin-block-end:.125rem}
+/* A safety cover around the switch: a hatched plate that carries the word
+protected, with the switch inside it. The word, not colour, says so. */
+.cover{position:relative;display:inline-flex;flex-direction:column;gap:.125rem;padding:.25rem;border:2px solid var(--line);border-radius:2px}
+/* The hatch lies over the switch, at a strength that leaves the On/Off word
+   readable, and never takes the pointer. */
+.cover::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(45deg,transparent 0 7px,var(--line) 7px 8px);opacity:.3}
+.cover .guard{position:relative;z-index:2;padding:.0625rem .25rem;text-align:center;background:var(--bay);color:var(--ink);border:1px solid var(--line);font-size:.75rem;font-weight:600;line-height:1.3;overflow-wrap:break-word}
 .device-empty{background:var(--bay);color:var(--ink2);border:2px dashed var(--line);padding:1rem;margin:0}
 .err-box{background:var(--bay);color:var(--ink);border:2px solid var(--err);padding:.75rem 1rem;margin:0}
 .err-box button{margin-block-start:.75rem}
@@ -126,7 +137,6 @@ ordinary words at 200% zoom. */
 .rocker .pos{flex:none;font-size:.75rem;font-weight:600;line-height:1.5}
 .rocker.offline{background:transparent;color:var(--ink);border:2px dashed var(--line);justify-content:center;cursor:not-allowed;font-size:.75rem}
 .action{min-inline-size:3.5rem;min-block-size:4.5rem;padding:.5rem .625rem;background:var(--switch);color:var(--switch-ink);border:1.5px solid var(--line);border-radius:3px}
-.guard{display:block;max-inline-size:100%;margin-block-end:.25rem;padding:.0625rem .25rem;text-align:center;overflow-wrap:break-word;background:var(--bay);border:2px double var(--line);font-size:.75rem;font-weight:600;color:var(--ink);pointer-events:none}
 @media (prefers-reduced-motion:no-preference){
 .rocker .paddle,.rocker .led{transition:transform .12s ease-out,background-color .12s ease-out,border-color .12s ease-out}
 .rocker[aria-checked="true"] .paddle{transform:translateY(-2px)}
@@ -146,10 +156,7 @@ dialog .danger-note{color:var(--err);font-weight:600}
 <body>
 <div class="wrap">
 <header>
-<div class="brand">
-<h1 lang="zh-Hans">家里的配电箱</h1>
-<span class="home-tag">home</span>
-</div>
+<h1>home</h1>
 <div class="bar">
 <button type="button" id="refresh" class="primary">Refresh</button>
 <button type="button" id="signout">Sign out</button>
@@ -159,7 +166,7 @@ dialog .danger-note{color:var(--err);font-weight:600}
 <div class="banner" id="backend-banner" aria-live="polite" hidden></div>
 <p id="status-msg" class="status" role="status" aria-live="polite"></p>
 <section aria-labelledby="list-heading">
-<h2 id="list-heading" class="section-title">Breakers</h2>
+<h2 id="list-heading" class="visually-hidden">Device breakers</h2>
 <div id="list-slot"></div>
 </section>
 </main>
@@ -471,7 +478,7 @@ function renderRows(rows){
     rows.forEach(function(now,i){
       now._stateEl=old[i]._stateEl;now._errEl=old[i]._errEl;
       now._controlsEl=old[i]._controlsEl;now._teleEl=old[i]._teleEl;
-      now._switchEl=old[i]._switchEl;
+      now._switchEl=old[i]._switchEl;now._foldEl=old[i]._foldEl;now._foldBody=old[i]._foldBody;
       // Keep the optimistic sequence so an in-flight read can still win.
       now._seq=old[i]._seq;now._state=old[i]._state;now._online=old[i]._online;
     });
@@ -537,6 +544,16 @@ function renderRows(rows){
         tele.className="tele";
         read.appendChild(tele);
       }
+      // Raw read-only readings the telemetry block does not show. Closed by
+      // default so a row is name, state, reading and control.
+      var fold=document.createElement("details");
+      fold.hidden=true;
+      var sum=document.createElement("summary");
+      sum.textContent="Details";
+      fold.appendChild(sum);
+      var foldBody=document.createElement("div");
+      fold.appendChild(foldBody);
+      read.appendChild(fold);
       var ctl=document.createElement("div");
       ctl.className="dev-ctl";
       var slotEl=document.createElement("div");
@@ -544,7 +561,7 @@ function renderRows(rows){
       ctl.appendChild(slotEl);
       li.appendChild(ctl);
       ul.appendChild(li);
-      dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;dev._switchEl=slotEl;
+      dev._stateEl=state;dev._errEl=err;dev._controlsEl=controls;dev._teleEl=tele;dev._switchEl=slotEl;dev._foldEl=fold;dev._foldBody=foldBody;
     });
     bay.appendChild(ul);
     enclosure.appendChild(bay);
@@ -678,10 +695,14 @@ function fetchState(dev){
     var r=pair[0];var j=pair[1];
     if(j&&j.error){
       if(isReauth(j,r.status))renderReauthBanner(dev.backend);
-      dev._stateEl.textContent="State: "+errText(j);
+      // An offline row says so in words; the backend message can carry the
+      // Device ID, which normal UI never shows.
+      var msg=errText(j);
+      var off=errCode(j)==="device_offline"||msg.toLowerCase().indexOf("offline")!==-1;
+      dev._stateEl.textContent="State: "+(off?"offline":msg);
       dev._online=false;
       buildControl(dev,null,j);
-      if(dev._teleEl)renderTelemetry(dev,"error",errText(j));
+      if(dev._teleEl)renderTelemetry(dev,"error",off?"offline":msg);
       return;
     }
     var data=j.data||{};
@@ -747,20 +768,33 @@ function renderTelemetry(dev,mode,payload){
     var u=document.createElement("span");u.className="unit";u.textContent=power.unit?String(power.unit):"W";
     row.appendChild(w);row.appendChild(u);el.appendChild(row);
   }
+  // One line of secondary telemetry. These are the readings the row carries;
+  // no raw point behind them is printed a second time.
   var order=["cur_current","cur_voltage","add_ele"];
-  var labels={cur_power:"Power",cur_current:"Current",cur_voltage:"Voltage",add_ele:"Energy"};
-  var rest=order.filter(function(k){return keys.indexOf(k)!==-1&&k!=="cur_power";})
-    .concat(keys.filter(function(k){return order.indexOf(k)===-1;}).sort());
+  var labels={cur_current:"Current",cur_voltage:"Voltage",add_ele:"Energy"};
+  var rest=order.filter(function(k){return keys.indexOf(k)!==-1;});
   if(rest.length){
-    var ul=document.createElement("ul");
-    rest.forEach(function(k){
-      var li=document.createElement("li");
-      var l=document.createElement("span");l.className="tlabel";l.textContent=labels[k]||k;
+    // Units carry the meaning, so the line stays one line at 390; the labels
+    // stay in the accessible text.
+    var line=document.createElement("p");
+    line.className="secondary";
+    rest.forEach(function(k,i){
+      if(i)line.appendChild(document.createTextNode(" · "));
+      var l=document.createElement("span");l.className="visually-hidden";l.textContent=labels[k]+" ";
       var v=document.createElement("span");v.className="tval";v.textContent=fmtTeleVal(tele[k]);
-      li.appendChild(l);li.appendChild(v);ul.appendChild(li);
+      line.appendChild(l);line.appendChild(v);
     });
-    el.appendChild(ul);
+    el.appendChild(line);
   }
+}
+// The raw read-only points the Telemetry block already shows once.
+var TELE_CODES={cur_power:1,cur_current:1,cur_voltage:1,add_ele:1};
+function setFold(dev,rows){
+  if(!dev._foldEl)return;
+  var body=dev._foldBody;
+  body.textContent="";
+  rows.forEach(function(text){body.appendChild(readonlyRow(text));});
+  dev._foldEl.hidden=!rows.length;
 }
 
 // --- controls ------------------------------------------------------------
@@ -882,9 +916,18 @@ function rebuild(target,build){
   }
 }
 function buildSwitchInto(dev,data,err,wrap){
-  if(dev.isProtected)wrap.appendChild(guardCover());
+  // A protected Device puts its control inside the cover, so the word sits on
+  // the thing it guards rather than floating above it.
+  var into=wrap;
+  if(dev.isProtected){
+    var cover=document.createElement("div");
+    cover.className="cover";
+    cover.appendChild(guardCover());
+    wrap.appendChild(cover);
+    into=cover;
+  }
   if(errCode(err)==="device_offline"||(!data&&dev._online===false)||(dev._online===false&&dev.backend==="tuya")){
-    wrap.appendChild(offlineControl(dev));
+    into.appendChild(offlineControl(dev));
     return;
   }
   var onVal=false;var hasSwitch=false;
@@ -896,7 +939,7 @@ function buildSwitchInto(dev,data,err,wrap){
     if(known.onOff){hasSwitch=true;onVal=!!(t.onOff&&typeof t.onOff.onOff==="boolean"&&t.onOff.onOff);}
     if(known.lock){
       var isLocked=t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean"?t.lockUnlock.isLocked:null;
-      wrap.appendChild(actionButton(dev,isLocked===true?"Unlock":"Lock",function(){
+      into.appendChild(actionButton(dev,isLocked===true?"Unlock":"Lock",function(){
         var next=!(isLocked===true);
         guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"lockUnlock.isLocked",value:next,confirm:next?undefined:true}),{
           sensitive:!next,
@@ -910,7 +953,7 @@ function buildSwitchInto(dev,data,err,wrap){
     }
     if(known.arm){
       var isArmed=t.armDisarm&&typeof t.armDisarm.isArmed==="boolean"?t.armDisarm.isArmed:null;
-      wrap.appendChild(actionButton(dev,isArmed===true?"Disarm":"Arm",function(){
+      into.appendChild(actionButton(dev,isArmed===true?"Disarm":"Arm",function(){
         var next=!(isArmed===true);
         guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"armDisarm.isArmed",value:next,confirm:next?undefined:true}),{
           sensitive:!next,
@@ -923,7 +966,7 @@ function buildSwitchInto(dev,data,err,wrap){
       return;
     }
     if(known.onOff){
-      wrap.appendChild(switchButton(dev,onVal,function(){
+      into.appendChild(switchButton(dev,onVal,function(){
         var next=!onVal;
         guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"onOff",value:next}),{
           mutate:function(st){
@@ -941,7 +984,7 @@ function buildSwitchInto(dev,data,err,wrap){
   var pts=tuyaPts(dev);
   pts.forEach(function(p){if(p.code==="switch_1"){hasSwitch=true;onVal=!!p.value;}});
   if(hasSwitch||pts.length===0){
-    wrap.appendChild(switchButton(dev,onVal,function(){
+    into.appendChild(switchButton(dev,onVal,function(){
       var next=!onVal;
       guardedWrite(dev,Object.assign(tuyaSetPost(dev,next),{
         mutate:function(st){
@@ -955,33 +998,41 @@ function buildSwitchInto(dev,data,err,wrap){
     }));
     return;
   }
-  wrap.appendChild(readonlyRow("Read-only"));
+  into.appendChild(readonlyRow("Read-only"));
 }
 function buildTraitInto(dev,data,err,wrap){
   if(errCode(err)==="device_offline"||(!data&&dev._online===false)){
     wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
+    setFold(dev,[]);
     return;
   }
   if(!data){
     wrap.appendChild(readonlyRow("Could not load device state."));
     wrap.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
+    setFold(dev,[]);
     return;
   }
   if(dev._online===false){
     wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
+    setFold(dev,[]);
     return;
   }
   if(dev.backend==="tuya"){
     var pts=tuyaPts(dev);
     var hasSwitch=false;
-    pts.forEach(function(p){if(p.code==="switch_1")hasSwitch=true;});
+    var foldRows=[];
+    var tele=(dev._state&&dev._state.telemetry)||{};
     pts.forEach(function(p){
-      if(p.code==="switch_1"||isCalib(p.code))return;
-      wrap.appendChild(readonlyRow(p.code+": "+stateValSummary(p.value)+" (Read-only)"));
+      if(p.code==="switch_1")hasSwitch=true;
+      // Whatever the telemetry block prints is already on the row; a raw point
+      // it covers must not appear a second time, even in the fold.
+      if(p.code==="switch_1"||isCalib(p.code)||TELE_CODES[p.code]||tele[p.code])return;
+      foldRows.push(p.code+": "+stateValSummary(p.value)+" (Read-only)");
     });
     if(!hasSwitch&&pts.length>0){
-      wrap.appendChild(readonlyRow("No power switch point on this device. Values above are read-only."));
+      foldRows.unshift("No power switch point on this device. Values below are read-only.");
     }
+    setFold(dev,foldRows);
     return;
   }
   var t=ghTraits(dev);
@@ -1069,22 +1120,24 @@ function buildTraitInto(dev,data,err,wrap){
     wrap.appendChild(row);
   }
   var renderedKeys=["deviceStatus","onOff","brightness","colorSetting","color","temperatureSetting","thermostat","temperature","volume","lockUnlock","armDisarm"];
+  var foldRows=[];
   traits.forEach(function(tr){
     if(!traitKnownName(tr)){
       var found=findTraitState(t||{},tr);
       var short=String(tr).split(".").pop()||String(tr);
-      wrap.appendChild(readonlyRow(short+": "+stateValSummary(found[1])+" (Read-only)"));
+      foldRows.push(short+": "+stateValSummary(found[1])+" (Read-only)");
       if(renderedKeys.indexOf(found[0])===-1)renderedKeys.push(found[0]);
     }
   });
   Object.keys(t||{}).forEach(function(k){
     if(renderedKeys.indexOf(k)===-1){
-      wrap.appendChild(readonlyRow(k+": "+stateValSummary(t[k])+" (Read-only)"));
+      foldRows.push(k+": "+stateValSummary(t[k])+" (Read-only)");
     }
   });
   if(!Object.keys(known).length&&!traits.length){
-    wrap.appendChild(readonlyRow("No known traits on this device. State shown above is read-only."));
+    foldRows.push("No known traits on this device. State shown above is read-only.");
   }
+  setFold(dev,foldRows);
 }
 
 // --- polling -------------------------------------------------------------
@@ -1124,8 +1177,11 @@ function load(){
     var statusData=sj&&sj.data?sj.data:null;
     if(statusData&&typeof statusData.tuya_user_code_configured!=="undefined")tuyaUserCodeConfigured=!!statusData.tuya_user_code_configured;
     bannerFor(data,statusData);
-    msg.textContent="Updated.";
-    renderRows(rowsFor(data,data));
+    // One live status line doubles as the list's label, so no separate
+    // "Breakers" heading floats under it.
+    var rows=rowsFor(data,data);
+    msg.textContent="Updated. "+rows.length+" "+(rows.length===1?"device":"devices")+".";
+    renderRows(rows);
     loading=false;lastDone=Date.now();schedule(POLL_MS);
   }).catch(function(e){
     showError(e.message);

@@ -696,6 +696,32 @@ fn index_smoke_landmarks_and_controls() {
     ] {
         assert!(body.contains(needle), "index writes {needle:?}");
     }
+    // Product copy only: the header is the product name, with no metaphor and
+    // no duplicate tag beside it.
+    for needle in ["<h1>home</h1>", "<title>home</title>"] {
+        assert!(body.contains(needle), "index header missing {needle:?}");
+    }
+    for gone in ["家里的配电箱", "home-tag", ">Breakers<"] {
+        assert!(!body.contains(gone), "index still carries {gone:?}");
+    }
+    // Long read-only readings sit behind one native disclosure per row.
+    for needle in [
+        "createElement(\"details\")",
+        "createElement(\"summary\")",
+        "\"Details\"",
+    ] {
+        assert!(body.contains(needle), "index lacks disclosure {needle:?}");
+    }
+    // The protected marker is drawn by the cover around the control, not above it.
+    assert!(
+        body.contains("cover.className=\"cover\"") && body.contains("g.className=\"guard\""),
+        "protected cover markup missing"
+    );
+    // The list heading is visually hidden so it does not float under the status.
+    assert!(
+        body.contains("id=\"list-heading\" class=\"visually-hidden\""),
+        "list heading must be visually hidden"
+    );
 }
 
 /// Smoke: login page contract strings.
