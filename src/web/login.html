@@ -4,47 +4,155 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sign in | home</title>
+<script>
+"use strict";
+// One flat dictionary per language. A missing zh-CN or ja key falls back to
+// the English value, and then to the key itself, so a gap is visible, not blank.
+var I18N={
+"en":{
+/* i18n:en */
+"login.title":"Sign in | home",
+"login.heading":"Sign in",
+"login.passwordLabel":"Password",
+"login.submit":"Sign in",
+"err.wrong_password":"Wrong password",
+"err.rate_limited":"Too many failed attempts. Wait before trying again.",
+/* /i18n */
+},
+"zh-CN":{
+/* i18n:zh-CN */
+"login.title":"登录 | home",
+"login.heading":"登录",
+"login.passwordLabel":"密码",
+"login.submit":"登录",
+"err.wrong_password":"密码错误，请重试。",
+"err.rate_limited":"密码错误次数过多，请稍后再试。",
+/* /i18n */
+},
+"ja":{
+/* i18n:ja */
+"login.title":"ログイン | home",
+"login.heading":"ログイン",
+"login.passwordLabel":"パスワード",
+"login.submit":"ログイン",
+"err.wrong_password":"パスワードが正しくありません。",
+"err.rate_limited":"パスワードの失敗が多すぎます。しばらく待ってからもう一度お試しください。",
+/* /i18n */
+}
+};
+var SETTINGS_KEY="home_panel_settings";
+function readSettings(){
+  var d={lang:"auto",theme:"auto"};
+  try{
+    var raw=localStorage.getItem(SETTINGS_KEY);
+    if(!raw)return d;
+    var s=JSON.parse(raw);
+    if(!s||typeof s!=="object")return d;
+    if(["auto","en","zh-CN","ja"].indexOf(String(s.lang))!==-1)d.lang=s.lang;
+    if(["auto","light","dark"].indexOf(String(s.theme))!==-1)d.theme=s.theme;
+  }catch(e){}
+  return d;
+}
+// A saved language wins; otherwise the first browser preference that is zh*,
+// ja* or en* decides, and anything else lands on English.
+function pickLang(setting,langs){
+  if(setting&&setting!=="auto")return setting;
+  langs=langs||[];
+  for(var i=0;i<langs.length;i++){
+    var l=String(langs[i]||"").toLowerCase();
+    if(l.indexOf("zh")===0)return "zh-CN";
+    if(l.indexOf("ja")===0)return "ja";
+    if(l.indexOf("en")===0)return "en";
+  }
+  return "en";
+}
+var SETTINGS=readSettings();
+var LANG=pickLang(SETTINGS.lang,navigator.languages||[navigator.language||"en"]);
+document.documentElement.lang=LANG;
+// Only an explicit choice is pinned; "auto" leaves color-scheme following the OS.
+if(SETTINGS.theme==="light"||SETTINGS.theme==="dark")document.documentElement.setAttribute("data-theme",SETTINGS.theme);
+function t(key){
+  var d=I18N[LANG]||I18N.en;
+  var v=d[key];
+  if(v===undefined)v=I18N.en[key];
+  return v===undefined?key:v;
+}
+</script>
 <style>
-:root{color-scheme:light dark;--fg:#111418;--muted:#3d4754;--bg:#ffffff;--card:#f4f6f8;--line:#767676;--accent:#0b57d0;--accent-fg:#ffffff;--alert-bg:#fdf0d5;--alert-fg:#1a1a1a;--focus:#0b57d0;--radius:8px}
-@media (prefers-color-scheme:dark){:root{--fg:#eceff3;--muted:#c3ccd7;--bg:#15181c;--card:#1e2329;--line:#9aa7b8;--accent:#7ab5ff;--accent-fg:#0a1f3f;--alert-bg:#3a2d10;--alert-fg:#ffe9b0;--focus:#7ab5ff}}
+:root{
+/* The panel's tokens, by name and by value, so both pages read as one product.
+light-dark() picks the pair from the used color-scheme, which data-theme pins. */
+color-scheme:light dark;
+--page:light-dark(#DDE1E3,#1B1F22);
+--page-ink:light-dark(#2A2F33,#E9ECEE);
+--bay:light-dark(#F1F3F4,#262C30);
+--ink:light-dark(#2A2F33,#E9ECEE);
+--line:light-dark(#5A6166,#9AA3A9);
+--rail:light-dark(#2A2F33,#0E1113);
+--rail-ink:light-dark(#E9ECEE,#E9ECEE);
+--err:light-dark(#B3261E,#FF9E94);
+--focus:light-dark(#2A2F33,#F2B705);
+--focus-rail:#F2B705;
+}
+:root[data-theme="dark"]{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);line-height:1.5;padding:1.5rem;max-width:28rem;margin-inline:auto}
-h1{font-size:1.5rem;margin:0 0 1rem}
-form{display:flex;flex-direction:column;gap:.25rem;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.25rem}
-label{font-weight:600}
-input[type="password"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.75rem;border:1.5px solid var(--line);border-radius:var(--radius);color:var(--fg);background:var(--bg);width:100%}
-button[type="submit"]{font:inherit;min-height:48px;margin-top:.75rem;padding:.75rem 1.25rem;border:1.5px solid var(--accent);border-radius:var(--radius);background:var(--accent);color:var(--accent-fg);font-weight:700;cursor:pointer}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink)}
+header{padding:1rem;background:var(--rail);color:var(--rail-ink);border-block-end:3px solid var(--focus-rail)}
+h1{margin:0;font-size:1.25rem;line-height:1.25;font-weight:700}
+main{max-inline-size:26rem;margin-inline:auto;padding:1.5rem 1.25rem}
+form{display:flex;flex-direction:column;gap:.375rem;background:var(--bay);border:1.5px solid var(--line);border-block-start:3px solid var(--focus-rail);padding:1.25rem}
+h2{margin:0 0 .25rem;font-size:1.125rem;line-height:1.3;color:var(--ink)}
+label{font-weight:600;color:var(--ink)}
+input[type="password"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.75rem;border:1.5px solid var(--line);border-radius:0;color:var(--ink);background:var(--page);width:100%}
+button[type="submit"]{font:inherit;font-size:1rem;min-height:48px;margin-top:.5rem;padding:.75rem 1.25rem;border:1.5px solid var(--ink);border-radius:0;background:var(--ink);color:var(--bay);font-weight:700;cursor:pointer;width:100%}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
-[role="alert"]{background:var(--alert-bg);color:var(--alert-fg);border:1px solid var(--line);border-radius:var(--radius);padding:.75rem 1rem;margin:.75rem 0}
-dialog:modal{overscroll-behavior:contain}
-dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
-@media (max-width:320px){body{padding:1rem}}
+header :focus-visible{outline-color:var(--focus-rail)}
+[role="alert"]{margin:.25rem 0 0;padding:.75rem 1rem;border:1.5px solid var(--err);background:var(--bay);color:var(--err)}
+@media (max-width:320px){main{padding:1rem .75rem}}
 </style>
 </head>
 <body>
-<h1>home</h1>
+<header><h1>home</h1></header>
 <main>
 <form method="post" action="/login" aria-labelledby="signin-title">
-<h2 id="signin-title" style="font-size:1.125rem;margin:0 0 .5rem">Sign in</h2>
+<h2 id="signin-title" data-i18n="login.heading">Sign in</h2>
 <div id="server-err"></div>
 <label for="pw">Password</label>
 <input id="pw" name="password" type="password" autocomplete="current-password" required enterkeyhint="go">
-<button type="submit">Sign in</button>
+<button type="submit" data-i18n="login.submit">Sign in</button>
 </form>
 </main>
 <script>
 (function(){
-  // The server renders a failed POST as an inline alert plus aria-invalid;
-  // the query-string branch covers the redirect form of the same error.
-  var m=/[?&]error=([^&#]*)/.exec(location.search);
   var slot=document.getElementById("server-err");
-  if(m){
+  // The label keeps the served English literal, which a smoke test asserts;
+  // its text is set here so the markup stays readable without scripts.
+  function applyI18n(){
+    var nodes=document.querySelectorAll("[data-i18n]");
+    for(var i=0;i<nodes.length;i++)nodes[i].textContent=t(nodes[i].getAttribute("data-i18n"));
+    document.querySelector("label[for='pw']").textContent=t("login.passwordLabel");
+    document.title=t("login.title");
+  }
+  applyI18n();
+  // The server renders a failed POST as an inline alert plus aria-invalid; the
+  // data-code picks the translation, and an unknown code keeps the server text.
+  // The query-string branch covers the redirect form of the same error.
+  var m=/[?&]error=([^&#]*)/.exec(location.search);
+  if(m&&!slot.querySelector("[role='alert']")){
     var p=document.createElement("p");
     p.setAttribute("role","alert");
     p.textContent=decodeURIComponent(m[1].replace(/\+/g," "));
     slot.appendChild(p);
   }
-  if(slot.querySelector('[role="alert"]'))document.getElementById("pw").setAttribute("aria-invalid","true");
+  var alert=slot.querySelector("[role='alert']");
+  if(alert){
+    // An unknown code keeps the English text the server put there.
+    var code=alert.getAttribute("data-code");
+    var key=code?"err."+code:"";
+    if(key&&I18N.en[key])alert.textContent=t(key);
+    document.getElementById("pw").setAttribute("aria-invalid","true");
+  }
 })();
 </script>
 </body>
