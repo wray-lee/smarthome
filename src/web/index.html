@@ -14,6 +14,29 @@ var I18N={
 /* i18n:en */
 "nav.refresh":"Refresh",
 "nav.signout":"Sign out",
+"nav.devices":"Devices",
+"nav.settings":"Settings",
+"settings.title":"Settings",
+"settings.lead":"These settings stay in this browser.",
+"settings.lang.heading":"Language",
+"settings.lang.label":"Panel language",
+"settings.lang.note":"Auto follows this browser.",
+"settings.lang.auto":"Auto (browser)",
+"settings.lang.en":"English",
+"settings.lang.zh":"Chinese (Simplified)",
+"settings.lang.ja":"Japanese",
+"settings.tab.heading":"Default tab",
+"settings.tab.label":"First tab on the Devices page",
+"settings.tab.note":"Applies the next time you open Devices.",
+"settings.theme.heading":"Appearance",
+"settings.theme.label":"Theme",
+"settings.theme.note":"Auto follows this device's colour preference.",
+"settings.theme.auto":"Auto (system)",
+"settings.theme.light":"Light",
+"settings.theme.dark":"Dark",
+"settings.save":"Save",
+"settings.saved":"Saved.",
+"title.settings":"Settings - home",
 "list.heading":"Device breakers",
 "confirm.title":"Confirm sensitive action",
 "action.cancel":"Cancel",
@@ -129,6 +152,29 @@ var I18N={
 /* i18n:zh-CN */
 "nav.refresh":"刷新",
 "nav.signout":"退出登录",
+"nav.devices":"设备",
+"nav.settings":"设置",
+"settings.title":"设置",
+"settings.lead":"这些设置只保存在当前浏览器中。",
+"settings.lang.heading":"语言",
+"settings.lang.label":"面板语言",
+"settings.lang.note":"「自动」跟随浏览器设置。",
+"settings.lang.auto":"自动（浏览器）",
+"settings.lang.en":"英语",
+"settings.lang.zh":"简体中文",
+"settings.lang.ja":"日语",
+"settings.tab.heading":"默认标签",
+"settings.tab.label":"进入设备页时首先显示的标签",
+"settings.tab.note":"下次进入设备页时生效。",
+"settings.theme.heading":"外观",
+"settings.theme.label":"主题",
+"settings.theme.note":"「自动」跟随此设备的配色偏好。",
+"settings.theme.auto":"自动（系统）",
+"settings.theme.light":"浅色",
+"settings.theme.dark":"深色",
+"settings.save":"保存",
+"settings.saved":"已保存。",
+"title.settings":"设置 - home",
 "list.heading":"设备开关",
 "confirm.title":"确认敏感操作",
 "action.cancel":"取消",
@@ -244,6 +290,29 @@ var I18N={
 /* i18n:ja */
 "nav.refresh":"更新",
 "nav.signout":"ログアウト",
+"nav.devices":"デバイス",
+"nav.settings":"設定",
+"settings.title":"設定",
+"settings.lead":"これらの設定はこのブラウザーにのみ保存されます。",
+"settings.lang.heading":"言語",
+"settings.lang.label":"パネルの言語",
+"settings.lang.note":"「自動」ではこのブラウザーの設定に従います。",
+"settings.lang.auto":"自動（ブラウザー）",
+"settings.lang.en":"英語",
+"settings.lang.zh":"中国語（簡体字）",
+"settings.lang.ja":"日本語",
+"settings.tab.heading":"既定のタブ",
+"settings.tab.label":"デバイスページで最初に開くタブ",
+"settings.tab.note":"次にデバイスページを開いたときに反映されます。",
+"settings.theme.heading":"外観",
+"settings.theme.label":"テーマ",
+"settings.theme.note":"「自動」ではこのデバイスの配色設定に従います。",
+"settings.theme.auto":"自動（システム）",
+"settings.theme.light":"ライト",
+"settings.theme.dark":"ダーク",
+"settings.save":"保存",
+"settings.saved":"保存しました。",
+"title.settings":"設定 - home",
 "list.heading":"デバイスのスイッチ",
 "confirm.title":"重要な操作の確認",
 "action.cancel":"キャンセル",
@@ -386,7 +455,13 @@ function pickLang(setting,langs){
 var SETTINGS=readSettings();
 var LANG=pickLang(SETTINGS.lang,navigator.languages||[navigator.language||"en"]);
 document.documentElement.lang=LANG;
-// data-theme is read from the same settings and set here by the theme ticket.
+// auto leaves the attribute off so the CSS follows prefers-color-scheme;
+// light and dark pin color-scheme, which every light-dark() token follows.
+function applyTheme(){
+  if(SETTINGS.theme==="auto")document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme",SETTINGS.theme);
+}
+applyTheme();
 function t(key){
   var d=I18N[LANG]||I18N.en;
   var v=d[key];
@@ -404,60 +479,63 @@ function applyI18n(){
 }
 </script>
 <style>
+/* color-scheme decides which half of every light-dark() pair applies: light
+dark follows the system, and a saved setting pins it to light or dark. */
 :root{
 color-scheme:light dark;
 /* Cool gray enclosure, graphite rail, one tungsten accent. */
---page:#DDE1E3;
---page-ink:#2A2F33;
---page-ink2:#4A5156;
---rail:#2A2F33;
---rail-ink:#E9ECEE;
---rail-ink2:#C3C9CD;
---bay:#F1F3F4;
---ink:#2A2F33;
---ink2:#3C4348;
---muted:#5A6166;
---line:#5A6166;
---rule:#A7AEB2;
---err:#B3261E;
+--page:light-dark(#DDE1E3,#1B1F22);
+--page-ink:light-dark(#2A2F33,#E9ECEE);
+--page-ink2:light-dark(#4A5156,#C3C9CD);
+--rail:light-dark(#2A2F33,#0E1113);
+--rail-ink:light-dark(#E9ECEE,#E9ECEE);
+--rail-ink2:light-dark(#C3C9CD,#C3C9CD);
+--bay:light-dark(#F1F3F4,#262C30);
+--ink:light-dark(#2A2F33,#E9ECEE);
+--ink2:light-dark(#3C4348,#C3C9CD);
+--muted:light-dark(#5A6166,#A8B0B5);
+--line:light-dark(#5A6166,#9AA3A9);
+--rule:light-dark(#A7AEB2,#3A4247);
+--err:light-dark(#B3261E,#FF9E94);
 --amber:#F2B705;
---switch:#2A2F33;
---switch-ink:#E9ECEE;
---focus:#2A2F33;
+--switch:light-dark(#2A2F33,#121619);
+--switch-ink:light-dark(#E9ECEE,#E9ECEE);
+--focus:light-dark(#2A2F33,#F2B705);
 --focus-rail:#F2B705;
---btn:#F1F3F4;
---btn-ink:#1B1F22;
---slider:#2A2F33;
+--btn:light-dark(#F1F3F4,#E9ECEE);
+--btn-ink:light-dark(#1B1F22,#121619);
+--slider:light-dark(#2A2F33,#F2B705);
 }
-@media (prefers-color-scheme:dark){
-:root{
---page:#1B1F22;
---page-ink:#E9ECEE;
---page-ink2:#C3C9CD;
---rail:#0E1113;
---bay:#262C30;
---ink:#E9ECEE;
---ink2:#C3C9CD;
---muted:#A8B0B5;
---line:#9AA3A9;
---rule:#3A4247;
---err:#FF9E94;
---switch:#121619;
---focus:#F2B705;
---focus-rail:#F2B705;
---btn:#E9ECEE;
---btn-ink:#121619;
---slider:#F2B705;
-}
-}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;padding:0 0 3rem;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink);overflow-wrap:break-word;text-align:start}
 .wrap{max-inline-size:80rem;margin-inline:auto;padding-inline:1rem}
 header{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem;background:var(--rail);color:var(--rail-ink);border:2px solid var(--rail);border-block-end-width:3px}
 /* Fluid but capped below 1.5x body: the live power reading is the only
 enlarged text on the page (see .watts). */
-h1{margin:0;margin-inline-end:auto;font-size:clamp(1.125rem,1rem + .4vw,1.375rem);line-height:1.25;font-weight:700;text-wrap:balance;color:var(--rail-ink)}
+/* The nav ends the left group, so the actions sit at the far edge. */
+header .nav{margin-inline-end:auto}
 header .bar{display:flex;gap:.5rem;flex-wrap:wrap}
+/* Two real links, so the panel is still reachable with JS off or in a new tab.
+The current one is marked by a word-level shape, not colour alone. */
+.nav{display:flex;gap:.25rem;flex-wrap:wrap}
+.nav a{display:inline-flex;align-items:center;min-block-size:2.75rem;padding:.5rem .75rem;color:var(--rail-ink);font-weight:600;text-decoration:none;border-block-end:3px solid transparent}
+.nav a:hover{text-decoration:underline;text-underline-offset:.25rem}
+.nav a[aria-current="page"]{border-block-end-color:var(--focus-rail)}
+#h1-devices{margin:0;font-size:clamp(1.125rem,1rem + .4vw,1.375rem);line-height:1.25;font-weight:700;text-wrap:balance;color:var(--rail-ink)}
+#h1-settings{margin:.5rem 0 0;font-size:1.375rem;line-height:1.25;font-weight:700;text-wrap:balance;color:var(--page-ink)}
+#h1-devices:focus-visible,#h1-settings:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+header #h1-devices:focus-visible{outline-color:var(--focus-rail)}
+.settings-form{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;margin-block-start:.75rem}
+@media (min-width:64rem){.settings-form{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.settings-group{background:var(--bay);border:1px solid var(--line);min-inline-size:0}
+.settings-group .bay-head h2{margin:0;font-size:1.0625rem;line-height:1.3;font-weight:700;text-wrap:balance}
+.settings-body{display:flex;flex-direction:column;gap:.25rem;padding:.75rem}
+.settings-body label{font-weight:600}
+.settings-body select{max-inline-size:100%}
+.settings-actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;grid-column:1 / -1}
+#settings-saved{margin:0;font-weight:600;color:var(--ink2)}
 button{font:inherit;font-size:1rem;min-block-size:2.75rem;min-inline-size:2.75rem;padding:.5rem .875rem;border:1.5px solid var(--line);border-radius:0;background:var(--bay);color:var(--ink);font-weight:600;cursor:pointer}
 button.primary{background:var(--ink);color:var(--bay);border-color:var(--ink)}
 header button{background:transparent;color:var(--rail-ink);border-color:var(--rail-ink2)}
@@ -569,12 +647,17 @@ dialog .danger-note{color:var(--err);font-weight:600}
 <div class="wrap">
 <header>
 <h1>home</h1>
+<nav class="nav" aria-label="Main">
+<a href="/" id="nav-devices" data-nav="devices" data-i18n="nav.devices">Devices</a>
+<a href="/settings" id="nav-settings" data-nav="settings" data-i18n="nav.settings">Settings</a>
+</nav>
 <div class="bar">
 <button type="button" id="refresh" class="primary" data-i18n="nav.refresh">Refresh</button>
 <button type="button" id="signout" data-i18n="nav.signout">Sign out</button>
 </div>
 </header>
 <main>
+<div id="view-devices">
 <div class="banner" id="backend-banner" aria-live="polite" hidden></div>
 <div class="tabbar" role="tablist" data-i18n-aria="tab.list.label" aria-label="Devices by backend">
 <button type="button" role="tab" id="tab-all" aria-controls="tab-panel" aria-selected="true" tabindex="0"><span class="tab-label" data-i18n="tab.all">All</span><span class="tab-count"></span><span class="tab-state" hidden></span></button>
@@ -588,6 +671,54 @@ dialog .danger-note{color:var(--err);font-weight:600}
 <h2 id="list-heading" class="visually-hidden" data-i18n="list.heading">Device breakers</h2>
 <div id="list-slot"></div>
 </section>
+</div>
+</div>
+<div id="view-settings" hidden>
+<h1 id="h1-settings" tabindex="-1" data-i18n="settings.title">Settings</h1>
+<p class="note" data-i18n="settings.lead">These settings stay in this browser.</p>
+<form id="settings-form" class="settings-form">
+<section class="settings-group" aria-labelledby="set-lang-h">
+<div class="bay-head"><h2 id="set-lang-h" data-i18n="settings.lang.heading">Language</h2></div>
+<div class="settings-body">
+<label for="set-lang" data-i18n="settings.lang.label">Panel language</label>
+<p class="note" data-i18n="settings.lang.note">Auto follows this browser.</p>
+<select id="set-lang" name="lang">
+<option value="auto" data-i18n="settings.lang.auto">Auto (browser)</option>
+<option value="en" data-i18n="settings.lang.en">English</option>
+<option value="zh-CN" data-i18n="settings.lang.zh">Chinese (Simplified)</option>
+<option value="ja" data-i18n="settings.lang.ja">Japanese</option>
+</select>
+</div>
+</section>
+<section class="settings-group" aria-labelledby="set-tab-h">
+<div class="bay-head"><h2 id="set-tab-h" data-i18n="settings.tab.heading">Default tab</h2></div>
+<div class="settings-body">
+<label for="set-tab" data-i18n="settings.tab.label">First tab on the Devices page</label>
+<p class="note" data-i18n="settings.tab.note">Applies the next time you open Devices.</p>
+<select id="set-tab" name="defaultTab">
+<option value="all" data-i18n="tab.all">All</option>
+<option value="google_home" data-i18n="tab.google_home">Google Home</option>
+<option value="tuya" data-i18n="tab.tuya">Tuya</option>
+</select>
+</div>
+</section>
+<section class="settings-group" aria-labelledby="set-theme-h">
+<div class="bay-head"><h2 id="set-theme-h" data-i18n="settings.theme.heading">Appearance</h2></div>
+<div class="settings-body">
+<label for="set-theme" data-i18n="settings.theme.label">Theme</label>
+<p class="note" data-i18n="settings.theme.note">Auto follows this device's colour preference.</p>
+<select id="set-theme" name="theme">
+<option value="auto" data-i18n="settings.theme.auto">Auto (system)</option>
+<option value="light" data-i18n="settings.theme.light">Light</option>
+<option value="dark" data-i18n="settings.theme.dark">Dark</option>
+</select>
+</div>
+</section>
+<div class="settings-actions">
+<button type="submit" class="primary" data-i18n="settings.save">Save</button>
+<p id="settings-saved" role="status" aria-live="polite"></p>
+</div>
+</form>
 </div>
 </main>
 </div>
@@ -1739,9 +1870,100 @@ function load(){
     loading=false;lastDone=Date.now();schedule(POLL_MS);
   });
 }
+// --- routing -------------------------------------------------------------
+// Two views in one document. The links are real anchors, so a new tab or JS
+// off still reaches the server route; a plain click is intercepted instead.
+var VIEWS={devices:$("view-devices"),settings:$("view-settings")};
+var NAVS={devices:$("nav-devices"),settings:$("nav-settings")};
+// Focus lands on the view heading. The id and tabindex are set here because
+// the server test pins the served header as exactly `<h1>home</h1>`.
+var h1Devices=document.querySelector("header h1");
+h1Devices.id="h1-devices";
+h1Devices.setAttribute("tabindex","-1");
+var curView=null;
+function currentView(){return /\/settings\/?$/.test(location.pathname)?"settings":"devices";}
+function routeTitle(view){return view==="settings"?t("title.settings"):"home";}
+function showView(view,focus){
+  for(var k in VIEWS){
+    VIEWS[k].hidden=k!==view;
+    if(k===view)NAVS[k].setAttribute("aria-current","page");
+    else NAVS[k].removeAttribute("aria-current");
+  }
+  document.title=routeTitle(view);
+  if(focus){
+    (view==="settings"?$("h1-settings"):$("h1-devices")).focus({preventScroll:true});
+    window.scrollTo(0,0);
+  }
+}
+function enterView(view,focus){
+  var previous=curView;
+  curView=view;
+  showView(view,focus);
+  // A view switch drops unsaved picks: Settings refills from storage, and
+  // defaultTab takes effect on entering Devices, not on saving it.
+  if(previous==="settings"&&view==="devices"){
+    SETTINGS=readSettings();
+    tabSel=SETTINGS.defaultTab;
+    selectTab(tabSel,false);
+  }
+  if(view==="settings"){
+    SETTINGS=readSettings();
+    fillSettings();
+    $("settings-saved").textContent="";
+  }
+}
+// A click during polling must not steal focus from the poll's own updates;
+// the poll never touches focus, so only router entries move it.
+document.addEventListener("click",function(e){
+  if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  var a=e.target.closest("a[data-nav]");
+  if(!a||a.origin!==location.origin)return;
+  e.preventDefault();
+  var view=a.getAttribute("data-nav");
+  history.pushState({view:view},"",a.href);
+  enterView(view,true);
+});
+window.addEventListener("popstate",function(){enterView(currentView(),true);});
+
+// --- settings ------------------------------------------------------------
+function fillSettings(){
+  $("set-lang").value=SETTINGS.lang;
+  $("set-tab").value=SETTINGS.defaultTab;
+  $("set-theme").value=SETTINGS.theme;
+}
+// Re-render the static copy in the new language, then rebuild the rows so
+// their labels and details follow; device text also catches up on the poll.
+function relabel(){
+  applyI18n();
+  document.title=routeTitle(curView||currentView());
+  TAB_IDS.forEach(function(id){
+    var k=tabBackend[id];
+    setTabState(id,k&&k!=="ok"?"tab.status."+k:null);
+  });
+  if(lastDevices)selectTab(tabSel,false);
+}
+var settingsForm=$("settings-form");
+settingsForm.addEventListener("change",function(){$("settings-saved").textContent="";});
+settingsForm.addEventListener("submit",function(e){
+  e.preventDefault();
+  SETTINGS={lang:$("set-lang").value,defaultTab:$("set-tab").value,theme:$("set-theme").value};
+  try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(SETTINGS));}catch(err){}
+  applyTheme();
+  var lang=pickLang(SETTINGS.lang,navigator.languages||[navigator.language||"en"]);
+  if(lang!==LANG){
+    LANG=lang;
+    document.documentElement.lang=LANG;
+    try{NF=new Intl.NumberFormat(LANG,{maximumFractionDigits:1});}catch(err){}
+    relabel();
+  }
+  $("settings-saved").textContent=t("settings.saved");
+});
+
 applyI18n();
 // Markup ships All selected; the saved defaultTab decides the real first tab.
 selectTab(tabSel,false);
+fillSettings();
+enterView(currentView(),false);
 $("refresh").addEventListener("click",function(){load();});
 $("signout").addEventListener("click",function(){
   fetch("/logout",{method:"POST"}).then(function(){location.href="/login";}).catch(function(){location.href="/login";});
