@@ -26,9 +26,9 @@ to the rest of the workspace — the seam for a future Home MCP implementation.
 
 ## Build and test
 
-Developed and tested in WSL with no Windows toolchain: Arch Linux, user
-`wray`, `cargo` from the distro. `Cargo.lock` is committed, so dependency
-versions are fixed; that does not make the crates themselves available.
+Developed and tested in WSL with no Windows toolchain: Arch Linux, `cargo`
+from the distro. `Cargo.lock` is committed, so dependency versions are fixed;
+that does not make the crates themselves available.
 
 The network here may be available: `curl` probes of
 `https://index.crates.io/config.json` and
@@ -44,21 +44,21 @@ otherwise:
   (read and written from WSL through `/mnt/c`) and builds `--offline`:
 
 ```console
-export CARGO_HOME=/mnt/c/Users/Wray/.cargo
-export CARGO_TARGET_DIR=/home/wray/work/smarthome/target   # inside WSL, not on /mnt
+export CARGO_HOME=/mnt/c/Users/<you>/.cargo
+export CARGO_TARGET_DIR=/home/<you>/work/target   # inside WSL, not on /mnt
 cargo build --release
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
-Point `CARGO_TARGET_DIR` at a path inside WSL: building onto `/mnt/f` is slow
-and cases like `target/` there are easy to commit by accident. The same two
-exports plus `--release` build the binary. To drop the host cache, vendor the
-dependencies (`cargo vendor`) or pre-fill WSL's own registry cache while the
-machine still has a network; until then, those `CARGO_HOME`/`CARGO_TARGET_DIR`
-exports are a prerequisite, not a convenience. Vendor the dependencies when
-the network cannot be trusted; the offline build then needs nothing else.
+Point `CARGO_TARGET_DIR` at a path inside WSL: building onto a Windows mount
+is slow, and cases like `target/` there are easy to commit by accident. The
+same two exports plus `--release` build the binary. To drop the host cache,
+vendor the dependencies (`cargo vendor`) or pre-fill WSL's own registry cache
+while the machine still has a network; until then, those two exports are a
+prerequisite, not a convenience. Vendor the dependencies when the network
+cannot be trusted; the offline build then needs nothing else.
 
 ## Deploy
 
@@ -174,8 +174,9 @@ under `traits`; `home gh set` prints the resulting state plus `changed`.
 
 Unlocking a lock or disarming an alarm is a Sensitive Action: without
 `--confirm` it is refused with exit 6 and no trait call is sent upstream. A
-protected Device is refused with exit 6 even with `--confirm`; reading it
-still works. A `set` that passes those refusals reads the Device once more
+protected Device is refused with exit 6 even with `--confirm` (only `--force`
+lets one write through; see Protected Devices below); reading it still works.
+A `set` that passes those refusals reads the Device once more
 (one `GetTraits`) to check it is online, and only then writes.
 
 ## Sign in to Tuya and back up Local Keys
@@ -238,7 +239,8 @@ it is not one of the Device's functions, and it is not calibration:
 are reported under `calibration`, raw values, never as readings.
 
 A protected Device is refused by `on`/`off`/`set` with exit 6 before any
-command is sent; `get` still works. An offline Device fails every command
+command is sent unless `--force` is given for that one call; `get` still
+works. An offline Device fails every command
 with exit 4. If the session is dead (`sign invalid` or `1010`), exit 5 names
 the Tuya Backend. A transient `1108` is retried up to twice inside the one
 serialised client; anything else is exit 7.
@@ -267,8 +269,18 @@ other remote access path and must never be exposed to the public internet.
 the protected list; `home protect --list` shows it; `home protect --remove`
 is the only way out. Every write path goes through `home_store::guard`, which
 refuses a protected Device with exit 6 before any trait RPC (the Google Home
-name lookup has already run). No flag bypasses it. Nothing is protected by
-default.
+name lookup has already run). Nothing is protected by default.
+
+Two explicit one-time overrides let a single write through without changing
+the list; the Device stays protected:
+
+- `--force` on `home gh set` and on `home tuya on` / `off` / `set`. It is
+  separate from `--confirm`: `--force` accepts a write to a Protected Device,
+  `--confirm` accepts a Sensitive Action, and a protected lock needs both.
+- Re-entering the panel password in the Web Panel for that one request.
+
+Both are for the human at the keyboard. Protection ends only with
+`home protect --remove`; see `docs/adr/0002`.
 
 ## Upstream overrides
 
@@ -297,24 +309,29 @@ and `GET /api/status` report panel health. A background ticker refreshes the
 Tuya token before expiry and persists the rotated refresh token first, so the
 session stays alive without waiting for a request.
 
-Login failures have no failed-login throttling and no lockout, so the panel
-must stay on loopback behind Tailscale and never be exposed directly.
-Session ids are 32 bytes from the OS CSPRNG, and both the cookie and the
-in-memory session expire after 8 hours; signing out deletes the id. Every
-response carries `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
-`frame-ancestors 'none'`, `Referrer-Policy: no-referrer` and
-`Cache-Control: no-store`. The password check compares in constant time and
-folds the length in. The panel renders every server value as text; the one
-`innerHTML` is the Tuya QR SVG, whose markup the server builds itself from
-the QR encoder (coordinates only, no request text). There is no CSRF token;
-`SameSite=Strict` is what keeps a foreign page from driving a POST, which is
-why the cookie must never be relaxed.
+Login failures share one failed-password throttle with the protected-device
+override. From the third failure a single counter backs off exponentially
+(`2 << min(failures - 3, 5)` seconds); a blocked request gets
+`429 Too Many Requests` with `Retry-After` before its password is compared, so
+a right password during the wait is refused too, and any right password
+resets the counter. The panel still belongs on loopback behind Tailscale,
+never exposed directly. Session ids are 32 bytes from the OS CSPRNG, and both
+the cookie and the in-memory session expire after 8 hours; signing out deletes
+the id. Every response carries `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: DENY`, `frame-ancestors 'none'`, `Referrer-Policy:
+no-referrer` and `Cache-Control: no-store`. The password check compares in
+constant time and folds the length in. The panel renders every server value as
+text; the one `innerHTML` is the Tuya QR SVG, whose markup the server builds
+itself from the QR encoder (coordinates only, no request text). There is no
+CSRF token; `SameSite=Strict` is what keeps a foreign page from driving a
+POST, which is why the cookie must never be relaxed.
 
 The panel calls the same command layer as the CLI and keeps the CLI safety
-rules. A protected Device shows a visible `protected` label (text, not color
-alone) and no on/off control, and its write endpoints return exit code 6.
-Unlocking a lock or disarming an alarm asks for the same explicit
-confirmation as the CLI.
+rules. A protected Device shows a visible `protected` label and is read-only
+by default; a write from the panel needs the panel password re-entered for
+that one request, and the same password throttle applies. Unlocking a lock or
+disarming an alarm asks for the same explicit confirmation as the CLI, and a
+protected lock needs both.
 
 | CLI exit code | HTTP status | Meaning |
 |---|---|---|
@@ -326,6 +343,7 @@ confirmation as the CLI.
 | 6 | 403 | Sensitive Action or protected Device refused |
 | 7 | 502 | upstream error |
 | not authenticated | 401 | `unauthorized` |
+| many failed passwords | 429 | `rate_limited`, with `Retry-After` |
 
 Without a session, every `/api/` request returns 401 before any of the above
 is reached.

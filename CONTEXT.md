@@ -41,7 +41,7 @@ _Avoid_: integration, provider
 An action that weakens physical security, such as unlocking a door or disarming an alarm. The tool refuses it unless the caller confirms explicitly.
 
 **Protected Device**:
-A Device the tool will never write to, through any Backend, with no confirmation that overrides it. Reading its state and Telemetry still works. The user removes the protection explicitly; the tool never does. Unlike a Sensitive Action, which is about the action, protection is about the Device.
+A Device the tool refuses to write to, through any Backend, until the user removes the protection with `home protect --remove`. Reading its state and Telemetry still works. Protection stays active across writes; two explicit one-time overrides each let exactly one write through without changing the list: `--force` on the CLI, and re-entering the panel password in the Web Panel for that one request. Both exist for the human at the keyboard, and the same failed-password backoff covers the panel override as the login. Unlike a Sensitive Action, which is about the action, protection is about the Device, and a Protected Device still needs `--confirm` for a Sensitive Action.
 _Avoid_: locked device (confused with door locks), child lock (a physical-button setting on the plug)
 
 **CLI**:
