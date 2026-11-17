@@ -108,6 +108,16 @@ var I18N={
 "mode.cool":"Cool",
 "mode.heatcool":"Heat and cool",
 "mode.auto":"Auto",
+"tab.google_home":"Google Home",
+"tab.tuya":"Tuya",
+"tab.all":"All",
+"tab.status.offline":"offline",
+"tab.status.error":"error",
+"tab.status.signin":"sign in needed",
+"tab.list.label":"Devices by backend",
+"tab.guide.tuya":"Tuya is not signed in. Generate a QR code and scan it with the Smart Life app.",
+"tab.guide.google_home":"Google Home is not signed in. Run this command on the server, then press Refresh:",
+"tab.guide.refresh":"Refresh",
 "status.loading":"Loading devices...",
 "status.updated.one":"Updated. {count} device.",
 "status.updated.other":"Updated. {count} devices.",
@@ -213,6 +223,16 @@ var I18N={
 "mode.cool":"制冷",
 "mode.heatcool":"冷热",
 "mode.auto":"自动",
+"tab.google_home":"Google Home",
+"tab.tuya":"Tuya",
+"tab.all":"全部",
+"tab.status.offline":"离线",
+"tab.status.error":"出错",
+"tab.status.signin":"需要登录",
+"tab.list.label":"按后端分组的设备",
+"tab.guide.tuya":"Tuya 尚未登录。生成二维码，再用 Smart Life App 扫描。",
+"tab.guide.google_home":"Google Home 尚未登录。在服务器上运行以下命令，然后按“刷新”：",
+"tab.guide.refresh":"刷新",
 "status.loading":"正在加载设备…",
 "status.updated.one":"已更新。{count} 台设备。",
 "status.updated.other":"已更新。{count} 台设备。",
@@ -318,6 +338,16 @@ var I18N={
 "mode.cool":"冷房",
 "mode.heatcool":"冷暖",
 "mode.auto":"自動",
+"tab.google_home":"Google Home",
+"tab.tuya":"Tuya",
+"tab.all":"すべて",
+"tab.status.offline":"オフライン",
+"tab.status.error":"エラー",
+"tab.status.signin":"ログインが必要",
+"tab.list.label":"バックエンド別のデバイス",
+"tab.guide.tuya":"Tuya にログインしていません。QR コードを生成し、Smart Life アプリでスキャンしてください。",
+"tab.guide.google_home":"Google Home にログインしていません。サーバーで次のコマンドを実行し、更新を押してください：",
+"tab.guide.refresh":"更新",
 "status.loading":"デバイスを読み込んでいます…",
 "status.updated.one":"更新しました。{count} 台のデバイス。",
 "status.updated.other":"更新しました。{count} 台のデバイス。",
@@ -436,7 +466,21 @@ button:disabled{cursor:not-allowed}
 :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 header :focus-visible{outline-color:var(--focus-rail)}
 main{padding-block-start:.5rem}
+/* One scrolling row of tabs: never wrapped, so the tab order stays readable.
+Each tab is at least 44px tall; the selected one carries a shape (an underline
+drawn with a border on a pseudo-element) as well as colour. */
+.tabbar{display:flex;overflow-x:auto;margin-block-start:.75rem;border-block-end:2px solid var(--line);scrollbar-width:thin}
+[role="tab"]{position:relative;display:flex;flex:none;flex-wrap:wrap;justify-content:center;align-items:center;min-block-size:2.75rem;padding:.5rem .875rem;border:0;border-block-start:2px solid transparent;background:transparent;color:var(--page-ink2);font-weight:600;white-space:nowrap}
+[role="tab"][aria-selected="true"]{color:var(--ink);background:var(--bay);border-block-start-color:var(--bay)}
+[role="tab"][aria-selected="true"]::after{content:"";position:absolute;inset:auto 0 0;border-block-end:3px solid var(--ink)}
+[role="tab"] .tab-count{margin-inline-start:.375rem;font-weight:400;font-variant-numeric:tabular-nums}
+[role="tab"] .tab-state{flex-basis:100%;text-align:center;font-size:.8125rem;font-weight:400;color:var(--ink2)}
+/* The label and count are inline; a state line, when present, sits under them.
+An empty state span must take no room. */
+[role="tab"] .tab-state[hidden]{display:none}
+#tab-panel:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 .status{margin:.75rem 0 0;padding:.5rem .75rem;background:var(--bay);border:2px solid var(--line);border-block-end:0;color:var(--page-ink2);font-size:.9375rem}
+#tab-guide{margin-block:.75rem}
 .banner{background:var(--bay);color:var(--ink);border:2px solid var(--err);padding:.75rem 1rem;margin:.75rem 0;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 .banner[hidden]{display:none}
 .banner .banner-text{flex:1 1 16rem;min-inline-size:0}
@@ -532,11 +576,19 @@ dialog .danger-note{color:var(--err);font-weight:600}
 </header>
 <main>
 <div class="banner" id="backend-banner" aria-live="polite" hidden></div>
+<div class="tabbar" role="tablist" data-i18n-aria="tab.list.label" aria-label="Devices by backend">
+<button type="button" role="tab" id="tab-all" aria-controls="tab-panel" aria-selected="true" tabindex="0"><span class="tab-label" data-i18n="tab.all">All</span><span class="tab-count"></span><span class="tab-state" hidden></span></button>
+<button type="button" role="tab" id="tab-google_home" aria-controls="tab-panel" aria-selected="false" tabindex="-1"><span class="tab-label" data-i18n="tab.google_home">Google Home</span><span class="tab-count"></span><span class="tab-state" hidden></span></button>
+<button type="button" role="tab" id="tab-tuya" aria-controls="tab-panel" aria-selected="false" tabindex="-1"><span class="tab-label" data-i18n="tab.tuya">Tuya</span><span class="tab-count"></span><span class="tab-state" hidden></span></button>
+</div>
 <p id="status-msg" class="status" role="status" aria-live="polite"></p>
+<div id="tab-panel" role="tabpanel" aria-labelledby="tab-all">
+<div class="banner" id="tab-guide" aria-live="polite" hidden></div>
 <section aria-labelledby="list-heading">
 <h2 id="list-heading" class="visually-hidden" data-i18n="list.heading">Device breakers</h2>
 <div id="list-slot"></div>
 </section>
+</div>
 </main>
 </div>
 <dialog id="confirm-dialog" aria-labelledby="confirm-title">
@@ -693,6 +745,9 @@ function renderBannerNodes(nodes){
 function renderTuyaReauth(){renderBannerNodes(tuyaReauthNodes());}
 function renderGhReauth(){renderBannerNodes(ghReauthNodes());}
 function renderReauthBanner(backend){
+  // On the backend's own tab the panel's signed-out guidance says it, so the
+  // top banner stays out of the way.
+  if(tabSel===backend){clearBanner();showGuide(backend);return;}
   if(backend==="tuya")renderTuyaReauth();else renderGhReauth();
 }
 function bannerFor(data,statusData){
@@ -708,6 +763,11 @@ function bannerFor(data,statusData){
   else if(data&&data.tuya)tuyaReauth=false;
   else tuyaReauth=tuyaStatus==="reauth_required";
   var ghReauth=ghErr&&ghErr.error&&ghErr.error.code==="reauth_required";
+  // On a backend's own tab the panel's signed-out guidance carries that
+  // backend's message and its fix, so the top banner drops it rather than
+  // repeating it; a tab shows at most what the other backend still needs.
+  if(tabSel==="tuya")tuyaReauth=false;
+  if(tabSel==="google_home")ghReauth=false;
   if(tuyaReauth&&ghReauth){
     var nodes=[];
     var span=document.createElement("span");span.className="banner-text";
@@ -728,6 +788,8 @@ function bannerFor(data,statusData){
   var parts=[];
   ["google_home","tuya"].forEach(function(bk){
     var e=data&&data[bk+"_error"];
+    // The tab already shows the signed-out guidance with the fix in it.
+    if(bk===tabSel&&e&&e.error&&e.error.code==="reauth_required")return;
     if(e&&e.error){
       var name=bk==="google_home"?"Google Home":"Tuya";
       parts.push(tf("banner.backendError",{name:name,code:e.error.code||t("err.unknown")}));
@@ -841,13 +903,15 @@ function groupRows(rows){
   });
   return order.map(function(k){return map[k];});
 }
-function renderRows(rows){
+// The cache key carries the selected tab, and a switch rebuilds at once rather
+// than reusing a panel built from another view.
+function renderRows(rows,rebuild){
   var slot=$("list-slot");
   // Re-rendering the whole list on every poll threw keyboard focus away and
   // made sliders unusable. When the device set is unchanged, keep the live
   // DOM and refresh the state in place instead.
-  var key=rowsKey(rows);
-  if(key&&key===slot._key){
+  var key=tabSel+"|"+rowsKey(rows);
+  if(!rebuild&&key&&key===slot._key){
     var old=slot._rows;
     rows.forEach(function(now,i){
       now._stateEl=old[i]._stateEl;now._errEl=old[i]._errEl;
@@ -1068,11 +1132,12 @@ function fetchState(dev){
     if(my!==dev._seq)return;
     var r=pair[0];var j=pair[1];
     if(j&&j.error){
-      if(isReauth(j,r.status))renderReauthBanner(dev.backend);
+      if(isReauth(j,r.status)){renderReauthBanner(dev.backend);markBackend(dev.backend,"signin");}
       // An offline row says so in words; the backend message can carry the
       // Device ID, which normal UI never shows.
       var msg=errText(j);
       var off=errCode(j)==="device_offline"||msg.toLowerCase().indexOf("offline")!==-1;
+      if(off)markBackend(dev.backend,"offline");
       dev._stateEl.textContent=off?t("state.offline"):tf("state.raw",{value:msg});
       dev._online=false;
       buildControl(dev,null,j);
@@ -1515,6 +1580,101 @@ function buildTraitInto(dev,data,err,wrap){
   setFold(dev,foldRows);
 }
 
+// --- tabs ----------------------------------------------------------------
+// The selected tab starts from the saved defaultTab and then belongs to the
+// operator: a poll never moves it and nothing is remembered between visits.
+var TAB_IDS=["all","google_home","tuya"];
+var tabSel=SETTINGS.defaultTab;
+var tabBackend={};   // backend -> "ok" | "offline" | "error" | "signin"
+var tabRows=[];      // the last full row list, so a tab switch re-renders without a fetch
+var lastDevices=null,lastStatus=null; // so a switch can re-decide the banner
+function tabEl(id){return $("tab-"+id);}
+function setTabCount(id,count){
+  var el=tabEl(id).querySelector(".tab-count");
+  el.textContent=count===null?"":" "+NF.format(count);
+}
+function setTabState(id,key){
+  var el=tabEl(id).querySelector(".tab-state");
+  if(!key){el.textContent="";el.hidden=true;return;}
+  el.textContent=t(key);
+  el.hidden=false;
+}
+function showGuide(id){
+  var g=$("tab-guide");g.innerHTML="";g.hidden=true;
+  var nodes=[];
+  if((id==="google_home"||id==="tuya")&&tabBackend[id]==="signin"){
+    var span=document.createElement("span");span.className="banner-text";
+    span.textContent=t(id==="tuya"?"tab.guide.tuya":"tab.guide.google_home");
+    nodes.push(span);
+  }
+  if(id==="google_home"&&nodes.length){
+    var c=document.createElement("code");c.textContent="home gh login --email <your-email>";nodes.push(c);
+    nodes.push(makeBtn(t("tab.guide.refresh"),true,function(){load();}));
+  }else if(id==="tuya"&&nodes.length){
+    nodes.push(makeBtn(t("banner.tuyaSignIn"),false,function(){openQr();}));
+  }else{
+    return;
+  }
+  g.innerHTML="";
+  nodes.forEach(function(n){g.appendChild(n);});
+  g.hidden=false;
+}
+function tabRowsFor(id,all){
+  return all.filter(function(r){return id==="all"||r.backend===id;});
+}
+function selectTab(id,moveFocus){
+  if(TAB_IDS.indexOf(id)===-1)return;
+  tabSel=id;
+  TAB_IDS.forEach(function(tid){
+    var el=tabEl(tid);
+    var on=tid===id;
+    el.setAttribute("aria-selected",on?"true":"false");
+    el.setAttribute("tabindex",on?"0":"-1");
+    if(on&&moveFocus)el.focus();
+  });
+  $("tab-panel").setAttribute("aria-labelledby","tab-"+id);
+  // A switch only swaps the panel content; the tablist itself is never rebuilt.
+  var own=tabRowsFor(id,tabRows);
+  if(lastDevices)bannerFor(lastDevices,lastStatus);
+  renderRows(own,true);
+  $("status-msg").textContent=tf(own.length===1?"status.updated.one":"status.updated.other",{count:NF.format(own.length)});
+  showGuide(id);
+  tabEl(id).scrollIntoView({block:"nearest",inline:"nearest",container:"nearest"});
+}
+function renderView(){
+  var own=tabRowsFor(tabSel,tabRows);
+  $("status-msg").textContent=tf(own.length===1?"status.updated.one":"status.updated.other",{count:NF.format(own.length)});
+  renderRows(own,false);
+  showGuide(tabSel);
+}
+function tabKeydown(e){
+  var i=TAB_IDS.indexOf(tabSel);
+  var next=null;
+  if(e.key==="ArrowRight")next=(i+1)%TAB_IDS.length;
+  else if(e.key==="ArrowLeft")next=(i+TAB_IDS.length-1)%TAB_IDS.length;
+  else if(e.key==="Home")next=0;
+  else if(e.key==="End")next=TAB_IDS.length-1;
+  if(next===null)return;
+  e.preventDefault();
+  selectTab(TAB_IDS[next],true);
+}
+(function wireTabs(){
+  var list=document.querySelector('[role="tablist"]');
+  list.addEventListener("keydown",tabKeydown);
+  list.addEventListener("click",function(e){
+    var b=e.target.closest('[role="tab"]');
+    if(b&&tabSel!==b.id.slice(4))selectTab(b.id.slice(4),false);
+  });
+})();
+// A per-device read can turn a backend's state; when the view is showing that
+// backend, redraw its guidance with it.
+function markBackend(backend,key){
+  if(tabBackend[backend]===key)return;
+  tabBackend[backend]=key;
+  setTabState(backend,key==="ok"?null:key==="offline"?"tab.status.offline":key==="error"?"tab.status.error":"tab.status.signin");
+  if(tabSel===backend)showGuide(backend);
+}
+
 // --- polling -------------------------------------------------------------
 var pollTimer=null;
 var lastDone=0;
@@ -1551,12 +1711,28 @@ function load(){
     var data=j.data||{};
     var statusData=sj&&sj.data?sj.data:null;
     if(statusData&&typeof statusData.tuya_user_code_configured!=="undefined")tuyaUserCodeConfigured=!!statusData.tuya_user_code_configured;
+    lastDevices=data;lastStatus=statusData;
     bannerFor(data,statusData);
     // One live status line doubles as the list's label, so no separate
     // "Breakers" heading floats under it.
-    var rows=rowsFor(data,data);
-    msg.textContent=tf(rows.length===1?"status.updated.one":"status.updated.other",{count:NF.format(rows.length)});
-    renderRows(rows);
+    var lines=[data.google_home,data.tuya];
+    tabRows=rowsFor(data,data);
+    ["google_home","tuya"].forEach(function(bk,i){
+      var err=data[bk+"_error"];
+      var list=lines[i];
+      setTabCount(bk,Array.isArray(list)?list.length:null);
+      var key="ok";
+      if(err&&err.error){
+        var code=err.error.code||"";
+        key=code==="reauth_required"?"signin":(code==="device_offline"?"offline":"error");
+      }else if(tabRows.some(function(r){return r.backend===bk&&r.online===false;})){
+        key="offline";
+      }
+      markBackend(bk,key);
+    });
+    setTabCount("all",tabRows.length);
+    setTabState("all",null);
+    renderView();
     loading=false;lastDone=Date.now();schedule(POLL_MS);
   }).catch(function(e){
     showError(e.message);
@@ -1564,6 +1740,8 @@ function load(){
   });
 }
 applyI18n();
+// Markup ships All selected; the saved defaultTab decides the real first tab.
+selectTab(tabSel,false);
 $("refresh").addEventListener("click",function(){load();});
 $("signout").addEventListener("click",function(){
   fetch("/logout",{method:"POST"}).then(function(){location.href="/login";}).catch(function(){location.href="/login";});
