@@ -672,15 +672,21 @@ fn index_smoke_landmarks_and_controls() {
         "/api/tuya/login/poll",
         "protected",
         "backend-banner",
-        "Loading devices...",
-        "Loading state...",
-        "Loading telemetry...",
-        "No telemetry readings reported.",
-        "No devices found",
-        "Syncing...",
-        "Telemetry",
-        "Sign in to Tuya (QR)",
-        "User code",
+        // Copy now lives in the inline dictionary; the function calls that
+        // reach it stay in the markup.
+        "t(\"status.loading\")",
+        "t(\"state.loading\")",
+        "t(\"telemetry.loading\")",
+        "t(\"telemetry.none\")",
+        "t(\"empty.devices\")",
+        "t(\"syncing\")",
+        "t(\"telemetry\")",
+        "t(\"banner.tuyaSignIn\")",
+        "data-i18n=\"qr.userCodeLabel\"",
+        "\"Loading devices...\"",
+        "\"No devices found. Check that both backends are logged in.\"",
+        "\"Sign in to Tuya (QR)\"",
+        "\"User code (optional)\"",
     ] {
         assert!(body.contains(needle), "index missing {needle:?}");
     }
@@ -708,6 +714,7 @@ fn index_smoke_landmarks_and_controls() {
     for needle in [
         "createElement(\"details\")",
         "createElement(\"summary\")",
+        "t(\"details\")",
         "\"Details\"",
     ] {
         assert!(body.contains(needle), "index lacks disclosure {needle:?}");

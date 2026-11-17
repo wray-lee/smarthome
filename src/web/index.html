@@ -5,6 +5,374 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>home</title>
+<script>
+"use strict";
+// One flat dictionary per language. A missing zh-CN or ja key falls back to
+// the English value, and then to the key itself, so a gap is visible, not blank.
+var I18N={
+"en":{
+/* i18n:en */
+"nav.refresh":"Refresh",
+"nav.signout":"Sign out",
+"list.heading":"Device breakers",
+"confirm.title":"Confirm sensitive action",
+"action.cancel":"Cancel",
+"action.confirm":"Confirm",
+"action.continue":"Continue",
+"action.retry":"Retry",
+"action.close":"Close",
+"action.apply":"Apply",
+"pw.title":"Panel password",
+"pw.label":"Password",
+"pw.text":"Enter the panel password to operate {name} once. It goes out with this one request and is not stored.",
+"qr.title":"Sign in to Tuya",
+"qr.userCodeLabel":"User code (optional)",
+"qr.generate":"Generate QR code",
+"qr.ariaLabel":"QR code",
+"qr.empty":"No QR code yet.",
+"qr.hintConfigured":"The server already has a user code configured, so you can leave this field empty. If you need it, find it in Smart Life app, then Me, Settings, Account and Security, User Code.",
+"qr.hintOptional":"Optional. Leave empty if the server already has a user code. To find yours, open Smart Life app, then Me, Settings, Account and Security, User Code.",
+"qr.status.enterCode":"Enter your code if needed, then press Generate QR code.",
+"qr.status.loading":"Loading. Generating QR code...",
+"qr.status.scan":"Scan the QR code with the Smart Life app. Waiting for the scan...",
+"qr.status.pending":"Waiting for the scan... (pending)",
+"qr.status.networkRetry":"Waiting for the scan... (network retry)",
+"qr.status.restored":"Tuya sign-in restored. Refreshing devices...",
+"qr.status.tryAgain":"Try Again.",
+"qr.err.signin":"Tuya sign-in failed: {detail}",
+"qr.err.start":"Could not start Tuya sign-in: {detail}",
+"qr.err.noCode":"The server answered without a QR code. Try Again.",
+"qr.err.poll":"Polling failed: {detail}",
+"qr.err.network":"Network error: {detail}",
+"banner.tuyaReauth":"Tuya needs you to sign in again. Open your Smart Life app on your phone, then sign in here with the QR code.",
+"banner.tuyaSignIn":"Sign in to Tuya (QR)",
+"banner.ghReauth":"Google Home needs you to sign in again in a browser to get a fresh oauth_token. This cannot be finished in this panel. Run this command, then press Refresh:",
+"banner.containerNote":"If this panel runs in a container, run: ",
+"banner.both":"Both backends need you to sign in again. Tuya uses the QR code here. Google Home needs a browser sign-in, run this command and press Refresh:",
+"banner.backendError":"{name}: {code}.",
+"banner.backendStatus":"{name}: {status}.",
+"err.unknown":"error",
+"err.requestFailed":"Request failed",
+"err.badResponse":"Bad response",
+"err.prefix":"Error: {detail}",
+"err.rateLimited":"Too many failed password attempts. Wait, then try again.",
+"err.setpoint":"Error: Enter a setpoint number.",
+"empty.devices":"No devices found. Check that both backends are logged in.",
+"state.loading":"Loading state...",
+"state.offline":"State: offline",
+"state.unknown":"State: unknown",
+"state.on":"State: on",
+"state.off":"State: off",
+"state.locked":"State: locked",
+"state.unlocked":"State: unlocked",
+"state.armed":"State: armed",
+"state.disarmed":"State: disarmed",
+"state.online":"State: online",
+"state.brightness":"State: brightness {value}%",
+"state.volume":"State: volume {value}%",
+"state.raw":"State: {value}",
+"state.loadFailed":"Could not load device state.",
+"syncing":"Syncing...",
+"details":"Details",
+"telemetry":"Telemetry",
+"telemetry.loading":"Loading telemetry...",
+"telemetry.offline":"Telemetry unavailable while the device is offline.",
+"telemetry.error":"Telemetry error: {detail}",
+"telemetry.none":"No telemetry readings reported.",
+"telemetry.current":"Current",
+"telemetry.voltage":"Voltage",
+"telemetry.energy":"Energy",
+"readonly":"Read-only",
+"offline.device":"Device is offline. Reconnect it first, then press Refresh.",
+"fold.row":"{label}: {value} (Read-only)",
+"fold.noSwitch":"No power switch point on this device. Values below are read-only.",
+"fold.noTraits":"No known traits on this device. State shown above is read-only.",
+"guard.protected":"protected",
+"guard.offline":"offline",
+"switch.on":"On",
+"switch.off":"Off",
+"switch.powerFor":" power for {name}",
+"lock.lock":"Lock",
+"lock.unlock":"Unlock",
+"arm.arm":"Arm",
+"arm.disarm":"Disarm",
+"sensitive.unlock":"Unlock {name}? Confirm, then enter the panel password if this Device is protected.",
+"sensitive.disarm":"Disarm {name}? Confirm, then enter the panel password if this Device is protected.",
+"traits.brightness":"Brightness",
+"traits.colorTemp":"Color temperature",
+"traits.volume":"Volume",
+"traits.mode":"Mode",
+"traits.setpoint":"Setpoint (degrees)",
+"mode.off":"Off",
+"mode.heat":"Heat",
+"mode.cool":"Cool",
+"mode.heatcool":"Heat and cool",
+"mode.auto":"Auto",
+"status.loading":"Loading devices...",
+"status.updated.one":"Updated. {count} device.",
+"status.updated.other":"Updated. {count} devices.",
+"bay.label":"{name} devices, {backend}",
+"group.other":"Other",
+/* /i18n */
+},
+"zh-CN":{
+/* i18n:zh-CN */
+"nav.refresh":"刷新",
+"nav.signout":"退出登录",
+"list.heading":"设备开关",
+"confirm.title":"确认敏感操作",
+"action.cancel":"取消",
+"action.confirm":"确认",
+"action.continue":"继续",
+"action.retry":"重试",
+"action.close":"关闭",
+"action.apply":"应用",
+"pw.title":"面板密码",
+"pw.label":"密码",
+"pw.text":"输入面板密码即可操作 {name} 一次。密码只随本次请求发送，不会被保存。",
+"qr.title":"登录 Tuya",
+"qr.userCodeLabel":"用户代码（可选）",
+"qr.generate":"生成二维码",
+"qr.ariaLabel":"二维码",
+"qr.empty":"尚未生成二维码。",
+"qr.hintConfigured":"服务器已配置用户代码，此字段可以留空。如需填写，请在 Smart Life App 中依次打开 我、设置、账号与安全、用户代码。",
+"qr.hintOptional":"可选。服务器已配置用户代码时可留空。如需查找，请在 Smart Life App 中依次打开 我、设置、账号与安全、用户代码。",
+"qr.status.enterCode":"需要时请填写代码，然后点击「生成二维码」。",
+"qr.status.loading":"正在加载，正在生成二维码…",
+"qr.status.scan":"请用 Smart Life App 扫描二维码，正在等待扫码…",
+"qr.status.pending":"等待扫码…（等待中）",
+"qr.status.networkRetry":"等待扫码…（网络重试）",
+"qr.status.restored":"Tuya 登录已恢复，正在刷新设备…",
+"qr.status.tryAgain":"请重试。",
+"qr.err.signin":"Tuya 登录失败：{detail}",
+"qr.err.start":"无法启动 Tuya 登录：{detail}",
+"qr.err.noCode":"服务器没有返回二维码，请重试。",
+"qr.err.poll":"轮询失败：{detail}",
+"qr.err.network":"网络错误：{detail}",
+"banner.tuyaReauth":"Tuya 需要重新登录。请先在手机上打开 Smart Life App，然后用二维码在这里登录。",
+"banner.tuyaSignIn":"用二维码登录 Tuya",
+"banner.ghReauth":"Google Home 需要你在浏览器中重新登录，以获取新的 oauth_token。这一步无法在这个面板里完成。请运行以下命令，然后点击刷新：",
+"banner.containerNote":"如果这个面板运行在容器中，请运行：",
+"banner.both":"两个后端都需要重新登录。Tuya 用这里的二维码登录。Google Home 需要浏览器登录，请运行以下命令并点击刷新：",
+"banner.backendError":"{name}：{code}。",
+"banner.backendStatus":"{name}：{status}。",
+"err.unknown":"错误",
+"err.requestFailed":"请求失败",
+"err.badResponse":"响应格式不正确",
+"err.prefix":"错误：{detail}",
+"err.rateLimited":"密码错误次数过多，请稍后再试。",
+"err.setpoint":"错误：请输入设定温度数值。",
+"empty.devices":"没有找到设备。请确认两个后端都已登录。",
+"state.loading":"正在加载状态…",
+"state.offline":"状态：离线",
+"state.unknown":"状态：未知",
+"state.on":"状态：开",
+"state.off":"状态：关",
+"state.locked":"状态：已上锁",
+"state.unlocked":"状态：未上锁",
+"state.armed":"状态：已布防",
+"state.disarmed":"状态：已撤防",
+"state.online":"状态：在线",
+"state.brightness":"状态：亮度 {value}%",
+"state.volume":"状态：音量 {value}%",
+"state.raw":"状态：{value}",
+"state.loadFailed":"无法加载设备状态。",
+"syncing":"同步中…",
+"details":"详情",
+"telemetry":"遥测",
+"telemetry.loading":"正在加载遥测数据…",
+"telemetry.offline":"设备离线，暂时无法读取遥测数据。",
+"telemetry.error":"遥测数据出错：{detail}",
+"telemetry.none":"暂无遥测读数。",
+"telemetry.current":"电流",
+"telemetry.voltage":"电压",
+"telemetry.energy":"电量",
+"readonly":"只读",
+"offline.device":"设备已离线。请先重新连接，然后点击刷新。",
+"fold.row":"{label}：{value}（只读）",
+"fold.noSwitch":"此设备没有电源开关点位，以下数值为只读。",
+"fold.noTraits":"此设备没有已知特性，上方显示的状态为只读。",
+"guard.protected":"受保护",
+"guard.offline":"离线",
+"switch.on":"开",
+"switch.off":"关",
+"switch.powerFor":" {name} 的电源",
+"lock.lock":"上锁",
+"lock.unlock":"解锁",
+"arm.arm":"布防",
+"arm.disarm":"撤防",
+"sensitive.unlock":"解锁 {name}？确认后，如果此设备受保护，请输入面板密码。",
+"sensitive.disarm":"撤防 {name}？确认后，如果此设备受保护，请输入面板密码。",
+"traits.brightness":"亮度",
+"traits.colorTemp":"色温",
+"traits.volume":"音量",
+"traits.mode":"模式",
+"traits.setpoint":"设定温度（度）",
+"mode.off":"关闭",
+"mode.heat":"制热",
+"mode.cool":"制冷",
+"mode.heatcool":"冷热",
+"mode.auto":"自动",
+"status.loading":"正在加载设备…",
+"status.updated.one":"已更新。{count} 台设备。",
+"status.updated.other":"已更新。{count} 台设备。",
+"bay.label":"{name} 设备，{backend}",
+"group.other":"其他",
+/* /i18n */
+},
+"ja":{
+/* i18n:ja */
+"nav.refresh":"更新",
+"nav.signout":"ログアウト",
+"list.heading":"デバイスのスイッチ",
+"confirm.title":"重要な操作の確認",
+"action.cancel":"キャンセル",
+"action.confirm":"実行",
+"action.continue":"続行",
+"action.retry":"再試行",
+"action.close":"閉じる",
+"action.apply":"適用",
+"pw.title":"パネルのパスワード",
+"pw.label":"パスワード",
+"pw.text":"{name} を1回操作するにはパネルのパスワードを入力してください。パスワードはこのリクエストと一緒に送信され、保存されません。",
+"qr.title":"Tuya にログイン",
+"qr.userCodeLabel":"ユーザーコード（任意）",
+"qr.generate":"QR コードを生成",
+"qr.ariaLabel":"QR コード",
+"qr.empty":"QR コードはまだありません。",
+"qr.hintConfigured":"サーバーにユーザーコードが設定済みのため、この欄は空のままで構いません。必要な場合は Smart Life アプリで Me → Settings → Account and Security → User Code の順に開いて確認できます。",
+"qr.hintOptional":"任意です。サーバーにユーザーコードが設定済みなら空のままで構いません。確認するには Smart Life アプリで Me → Settings → Account and Security → User Code を開きます。",
+"qr.status.enterCode":"必要ならコードを入力し、「QR コードを生成」を押してください。",
+"qr.status.loading":"読み込み中。QR コードを生成しています…",
+"qr.status.scan":"Smart Life アプリで QR コードを読み取ってください。読み取りを待っています…",
+"qr.status.pending":"読み取りを待っています…（待機中）",
+"qr.status.networkRetry":"読み取りを待っています…（ネットワーク再試行）",
+"qr.status.restored":"Tuya のログインを復元しました。デバイスを更新しています…",
+"qr.status.tryAgain":"もう一度お試しください。",
+"qr.err.signin":"Tuya のログインに失敗しました：{detail}",
+"qr.err.start":"Tuya のログインを開始できませんでした：{detail}",
+"qr.err.noCode":"サーバーが QR コードを返しませんでした。もう一度お試しください。",
+"qr.err.poll":"ポーリングに失敗しました：{detail}",
+"qr.err.network":"ネットワークエラー：{detail}",
+"banner.tuyaReauth":"Tuya の再ログインが必要です。スマートフォンで Smart Life アプリを開いてから、ここで QR コードを使ってログインしてください。",
+"banner.tuyaSignIn":"QR コードで Tuya にログイン",
+"banner.ghReauth":"Google Home は新しい oauth_token を取得するために、ブラウザーでの再ログインが必要です。このパネルでは完了できません。次のコマンドを実行してから、更新を押してください：",
+"banner.containerNote":"このパネルがコンテナーで動いている場合は、次を実行します：",
+"banner.both":"両方のバックエンドで再ログインが必要です。Tuya はここの QR コードを使います。Google Home はブラウザーでのログインが必要なので、次のコマンドを実行して更新を押してください：",
+"banner.backendError":"{name}：{code}。",
+"banner.backendStatus":"{name}：{status}。",
+"err.unknown":"エラー",
+"err.requestFailed":"リクエストに失敗しました",
+"err.badResponse":"応答の形式が正しくありません",
+"err.prefix":"エラー：{detail}",
+"err.rateLimited":"パスワードの失敗が多すぎます。しばらく待ってからもう一度お試しください。",
+"err.setpoint":"エラー：設定温度を数値で入力してください。",
+"empty.devices":"デバイスが見つかりません。両方のバックエンドにログインしているか確認してください。",
+"state.loading":"状態を読み込んでいます…",
+"state.offline":"状態：オフライン",
+"state.unknown":"状態：不明",
+"state.on":"状態：オン",
+"state.off":"状態：オフ",
+"state.locked":"状態：施錠済み",
+"state.unlocked":"状態：解錠済み",
+"state.armed":"状態：警戒中",
+"state.disarmed":"状態：警戒解除",
+"state.online":"状態：オンライン",
+"state.brightness":"状態：明るさ {value}%",
+"state.volume":"状態：音量 {value}%",
+"state.raw":"状態：{value}",
+"state.loadFailed":"デバイスの状態を読み込めませんでした。",
+"syncing":"同期中…",
+"details":"詳細",
+"telemetry":"テレメトリー",
+"telemetry.loading":"テレメトリーを読み込んでいます…",
+"telemetry.offline":"デバイスがオフラインのため、テレメトリーを取得できません。",
+"telemetry.error":"テレメトリーのエラー：{detail}",
+"telemetry.none":"テレメトリーの値はありません。",
+"telemetry.current":"電流",
+"telemetry.voltage":"電圧",
+"telemetry.energy":"電力量",
+"readonly":"読み取り専用",
+"offline.device":"デバイスはオフラインです。再接続してから更新を押してください。",
+"fold.row":"{label}：{value}（読み取り専用）",
+"fold.noSwitch":"このデバイスには電源スイッチの項目がありません。以下の値は読み取り専用です。",
+"fold.noTraits":"このデバイスには既知の特性がありません。上に表示される状態は読み取り専用です。",
+"guard.protected":"保護中",
+"guard.offline":"オフライン",
+"switch.on":"オン",
+"switch.off":"オフ",
+"switch.powerFor":" {name} の電源",
+"lock.lock":"施錠",
+"lock.unlock":"解錠",
+"arm.arm":"警戒",
+"arm.disarm":"警戒解除",
+"sensitive.unlock":"{name} を解錠しますか？確認後、このデバイスが保護されている場合はパネルのパスワードを入力してください。",
+"sensitive.disarm":"{name} の警戒を解除しますか？確認後、このデバイスが保護されている場合はパネルのパスワードを入力してください。",
+"traits.brightness":"明るさ",
+"traits.colorTemp":"色温度",
+"traits.volume":"音量",
+"traits.mode":"モード",
+"traits.setpoint":"設定温度（度）",
+"mode.off":"オフ",
+"mode.heat":"暖房",
+"mode.cool":"冷房",
+"mode.heatcool":"冷暖",
+"mode.auto":"自動",
+"status.loading":"デバイスを読み込んでいます…",
+"status.updated.one":"更新しました。{count} 台のデバイス。",
+"status.updated.other":"更新しました。{count} 台のデバイス。",
+"bay.label":"{name} のデバイス、{backend}",
+"group.other":"その他",
+/* /i18n */
+}
+};
+var SETTINGS_KEY="home_panel_settings";
+function readSettings(){
+  var d={lang:"auto",defaultTab:"all",theme:"auto"};
+  try{
+    var raw=localStorage.getItem(SETTINGS_KEY);
+    if(!raw)return d;
+    var s=JSON.parse(raw);
+    if(!s||typeof s!=="object")return d;
+    if(["auto","en","zh-CN","ja"].indexOf(String(s.lang))!==-1)d.lang=s.lang;
+    if(["all","google_home","tuya"].indexOf(String(s.defaultTab))!==-1)d.defaultTab=s.defaultTab;
+    if(["auto","light","dark"].indexOf(String(s.theme))!==-1)d.theme=s.theme;
+  }catch(e){}
+  return d;
+}
+// A saved language wins; otherwise the first browser preference that is zh*,
+// ja* or en* decides, and anything else lands on English.
+function pickLang(setting,langs){
+  if(setting&&setting!=="auto")return setting;
+  langs=langs||[];
+  for(var i=0;i<langs.length;i++){
+    var l=String(langs[i]||"").toLowerCase();
+    if(l.indexOf("zh")===0)return "zh-CN";
+    if(l.indexOf("ja")===0)return "ja";
+    if(l.indexOf("en")===0)return "en";
+  }
+  return "en";
+}
+var SETTINGS=readSettings();
+var LANG=pickLang(SETTINGS.lang,navigator.languages||[navigator.language||"en"]);
+document.documentElement.lang=LANG;
+// data-theme is read from the same settings and set here by the theme ticket.
+function t(key){
+  var d=I18N[LANG]||I18N.en;
+  var v=d[key];
+  if(v===undefined)v=I18N.en[key];
+  return v===undefined?key:v;
+}
+function tf(key,args){
+  return t(key).replace(/\{(\w+)\}/g,function(m,k){return args[k]===undefined?m:args[k];});
+}
+function applyI18n(){
+  var nodes=document.querySelectorAll("[data-i18n]");
+  for(var i=0;i<nodes.length;i++)nodes[i].textContent=t(nodes[i].getAttribute("data-i18n"));
+  var attrs=document.querySelectorAll("[data-i18n-aria]");
+  for(var j=0;j<attrs.length;j++)attrs[j].setAttribute("aria-label",t(attrs[j].getAttribute("data-i18n-aria")));
+}
+</script>
 <style>
 :root{
 color-scheme:light dark;
@@ -158,56 +526,56 @@ dialog .danger-note{color:var(--err);font-weight:600}
 <header>
 <h1>home</h1>
 <div class="bar">
-<button type="button" id="refresh" class="primary">Refresh</button>
-<button type="button" id="signout">Sign out</button>
+<button type="button" id="refresh" class="primary" data-i18n="nav.refresh">Refresh</button>
+<button type="button" id="signout" data-i18n="nav.signout">Sign out</button>
 </div>
 </header>
 <main>
 <div class="banner" id="backend-banner" aria-live="polite" hidden></div>
 <p id="status-msg" class="status" role="status" aria-live="polite"></p>
 <section aria-labelledby="list-heading">
-<h2 id="list-heading" class="visually-hidden">Device breakers</h2>
+<h2 id="list-heading" class="visually-hidden" data-i18n="list.heading">Device breakers</h2>
 <div id="list-slot"></div>
 </section>
 </main>
 </div>
 <dialog id="confirm-dialog" aria-labelledby="confirm-title">
-<h2 id="confirm-title">Confirm sensitive action</h2>
+<h2 id="confirm-title" data-i18n="confirm.title">Confirm sensitive action</h2>
 <p id="confirm-text"></p>
 <div class="actions">
-<button type="button" id="confirm-cancel" autofocus>Cancel</button>
-<button type="button" id="confirm-ok" class="primary">Confirm</button>
+<button type="button" id="confirm-cancel" autofocus data-i18n="action.cancel">Cancel</button>
+<button type="button" id="confirm-ok" class="primary" data-i18n="action.confirm">Confirm</button>
 </div>
 </dialog>
 <dialog id="pw-dialog" aria-labelledby="pw-title">
-<h2 id="pw-title">Panel password</h2>
+<h2 id="pw-title" data-i18n="pw.title">Panel password</h2>
 <p id="pw-text" class="note"></p>
 <form id="pw-form" method="dialog">
-<label for="pw-input">Password</label>
+<label for="pw-input" data-i18n="pw.label">Password</label>
 <input id="pw-input" name="password" type="password" autocomplete="current-password" required>
 <p id="pw-err" class="err-text" role="alert" hidden></p>
 <div class="actions">
-<button type="button" id="pw-cancel" autofocus>Cancel</button>
-<button type="submit" id="pw-ok" class="primary">Continue</button>
+<button type="button" id="pw-cancel" autofocus data-i18n="action.cancel">Cancel</button>
+<button type="submit" id="pw-ok" class="primary" data-i18n="action.continue">Continue</button>
 </div>
 </form>
 </dialog>
 <dialog id="qr-dialog" aria-labelledby="qr-title">
-<h2 id="qr-title">Sign in to Tuya</h2>
+<h2 id="qr-title" data-i18n="qr.title">Sign in to Tuya</h2>
 <p id="qr-hint" class="note"></p>
 <div class="field">
-<label for="qr-code">User code (optional)</label>
+<label for="qr-code" data-i18n="qr.userCodeLabel">User code (optional)</label>
 <input id="qr-code" name="user_code" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="done">
 </div>
 <div class="actions" style="justify-content:flex-start;margin-top:.75rem">
-<button type="button" id="qr-generate" class="primary">Generate QR code</button>
-<button type="button" id="qr-close">Close</button>
+<button type="button" id="qr-generate" class="primary" data-i18n="qr.generate">Generate QR code</button>
+<button type="button" id="qr-close" data-i18n="action.close">Close</button>
 </div>
 <p id="qr-status" role="status" aria-live="polite" style="margin:.75rem 0 0"></p>
 <p id="qr-err" class="err-text" role="alert" hidden></p>
-<div class="qr-box" id="qr-box" role="img" aria-label="QR code" style="margin-top:.75rem">No QR code yet.</div>
+<div class="qr-box" id="qr-box" role="img" data-i18n="qr.empty" data-i18n-aria="qr.ariaLabel" aria-label="QR code" style="margin-top:.75rem">No QR code yet.</div>
 <div class="actions" id="qr-retry-wrap" hidden>
-<button type="button" id="qr-retry">Retry</button>
+<button type="button" id="qr-retry" data-i18n="action.retry">Retry</button>
 </div>
 </dialog>
 <script>
@@ -224,7 +592,15 @@ function uid(dev,prefix){
   return prefix+dev.id+"-"+uidSeq;
 }
 function isVisible(){return document.visibilityState==="visible"&&!document.hidden;}
-function errText(j){if(!j||!j.error)return "Request failed";var e=j.error;if(e.message)return e.message;return e.code||"Request failed";}
+var NF;
+try{NF=new Intl.NumberFormat(LANG,{maximumFractionDigits:1});}catch(e){NF=new Intl.NumberFormat("en",{maximumFractionDigits:1});}
+function nf(v){return NF.format(Number(v));}
+// Spreadsheet and vendor APIs write it every which way; the panel writes kWh.
+function unitText(u){
+  u=String(u==null?"":u);
+  return u.toLowerCase()==="kwh"?"kWh":u;
+}
+function errText(j){if(!j||!j.error)return t("err.requestFailed");var e=j.error;if(e.message)return e.message;return e.code||t("err.requestFailed");}
 function errCode(j){return (j&&j.error&&j.error.code)||"";}
 function isReauth(j,status){return status===424||errCode(j)==="reauth_required";}
 
@@ -260,7 +636,7 @@ var pwResolve=null;
 // is never held in a variable, storage or a URL.
 function askPassword(dev){
   return new Promise(function(resolve){
-    $("pw-text").textContent="Enter the panel password to operate "+dev.name+" once. It goes out with this one request and is not stored.";
+    $("pw-text").textContent=tf("pw.text",{name:dev.name});
     $("pw-err").hidden=true;
     $("pw-input").value="";
     pwResolve=resolve;
@@ -293,21 +669,21 @@ function makeBtn(text,secondary,handler){
   return b;
 }
 function tuyaReauthNodes(){
-  var t=document.createElement("span");t.className="banner-text";
-  t.textContent="Tuya needs you to sign in again. Open your Smart Life app on your phone, then sign in here with the QR code.";
-  return [t,makeBtn("Sign in to Tuya (QR)",false,function(){openQr();})];
+  var span=document.createElement("span");span.className="banner-text";
+  span.textContent=t("banner.tuyaReauth");
+  return [span,makeBtn(t("banner.tuyaSignIn"),false,function(){openQr();})];
 }
 function ghReauthNodes(){
   var nodes=[];
-  var t=document.createElement("span");t.className="banner-text";
-  t.textContent="Google Home needs you to sign in again in a browser to get a fresh oauth_token. This cannot be finished in this panel. Run this command, then press Refresh:";
-  nodes.push(t);
+  var span=document.createElement("span");span.className="banner-text";
+  span.textContent=t("banner.ghReauth");
+  nodes.push(span);
   var c1=document.createElement("code");c1.textContent="home gh login --email <your-email>";nodes.push(c1);
   var note=document.createElement("span");note.className="banner-text";
-  note.textContent="If this panel runs in a container, run: ";
+  note.textContent=t("banner.containerNote");
   nodes.push(note);
   var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";nodes.push(c2);
-  nodes.push(makeBtn("Refresh",true,function(){load();}));
+  nodes.push(makeBtn(t("nav.refresh"),true,function(){load();}));
   return nodes;
 }
 function renderBannerNodes(nodes){
@@ -334,16 +710,16 @@ function bannerFor(data,statusData){
   var ghReauth=ghErr&&ghErr.error&&ghErr.error.code==="reauth_required";
   if(tuyaReauth&&ghReauth){
     var nodes=[];
-    var t=document.createElement("span");t.className="banner-text";
-    t.textContent="Both backends need you to sign in again. Tuya uses the QR code here. Google Home needs a browser sign-in, run this command and press Refresh:";
-    nodes.push(t);
+    var span=document.createElement("span");span.className="banner-text";
+    span.textContent=t("banner.both");
+    nodes.push(span);
     var c1=document.createElement("code");c1.textContent="home gh login --email <your-email>";nodes.push(c1);
     var note=document.createElement("span");note.className="banner-text";
-    note.textContent="If this panel runs in a container, run: ";
+    note.textContent=t("banner.containerNote");
     nodes.push(note);
     var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";nodes.push(c2);
-    nodes.push(makeBtn("Sign in to Tuya (QR)",false,function(){openQr();}));
-    nodes.push(makeBtn("Refresh",true,function(){load();}));
+    nodes.push(makeBtn(t("banner.tuyaSignIn"),false,function(){openQr();}));
+    nodes.push(makeBtn(t("nav.refresh"),true,function(){load();}));
     renderBannerNodes(nodes);
     return;
   }
@@ -354,12 +730,12 @@ function bannerFor(data,statusData){
     var e=data&&data[bk+"_error"];
     if(e&&e.error){
       var name=bk==="google_home"?"Google Home":"Tuya";
-      parts.push(name+": "+(e.error.code||"error")+".");
+      parts.push(tf("banner.backendError",{name:name,code:e.error.code||t("err.unknown")}));
     }
   });
-  if(tuyaStatus&&tuyaStatus!=="ok")parts.push("Tuya: "+tuyaStatus+".");
+  if(tuyaStatus&&tuyaStatus!=="ok")parts.push(tf("banner.backendStatus",{name:"Tuya",status:tuyaStatus}));
   var banner=$("backend-banner");
-  if(parts.length){banner.innerHTML="";var t=document.createElement("span");t.className="banner-text";t.textContent=parts.join(" ");banner.appendChild(t);banner.hidden=false;}
+  if(parts.length){banner.innerHTML="";var span=document.createElement("span");span.className="banner-text";span.textContent=parts.join(" ");banner.appendChild(span);banner.hidden=false;}
   else{clearBanner();}
 }
 
@@ -374,11 +750,9 @@ function qrShowErr(m){
 function qrClearErr(){var e=$("qr-err");e.textContent="";e.hidden=true;$("qr-retry-wrap").hidden=true;}
 function openQr(){
   qrClearErr();
-  $("qr-box").textContent="No QR code yet.";
-  $("qr-hint").textContent=tuyaUserCodeConfigured?
-    "The server already has a user code configured, so you can leave this field empty. If you need it, find it in Smart Life app, then Me, Settings, Account and Security, User Code.":
-    "Optional. Leave empty if the server already has a user code. To find yours, open Smart Life app, then Me, Settings, Account and Security, User Code.";
-  qrMsg("Enter your code if needed, then press Generate QR code.");
+  $("qr-box").textContent=t("qr.empty");
+  $("qr-hint").textContent=t(tuyaUserCodeConfigured?"qr.hintConfigured":"qr.hintOptional");
+  qrMsg(t("qr.status.enterCode"));
   if(!qrDialog.open)qrDialog.showModal();
   $("qr-code").focus();
 }
@@ -390,23 +764,23 @@ $("qr-retry").addEventListener("click",function(){startQrLogin();});
 function startQrLogin(){
   stopQrPoll();qrClearErr();
   var code=$("qr-code").value.trim();
-  qrMsg("Loading. Generating QR code...");
+  qrMsg(t("qr.status.loading"));
   var body=new URLSearchParams();
   if(code)body.set("user_code",code);
   fetch("/api/tuya/login/start",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
   .then(function(r){return r.json().then(function(j){return [r,j];});})
   .then(function(pair){
     var status=pair[0].status;var j=pair[1];
-    if(isReauth(j,status)){qrShowErr("Tuya sign-in failed: "+errText(j));qrMsg("Try Again.");return;}
-    if(j.error){qrShowErr("Could not start Tuya sign-in: "+errText(j));qrMsg("Try Again.");return;}
+    if(isReauth(j,status)){qrShowErr(tf("qr.err.signin",{detail:errText(j)}));qrMsg(t("qr.status.tryAgain"));return;}
+    if(j.error){qrShowErr(tf("qr.err.start",{detail:errText(j)}));qrMsg(t("qr.status.tryAgain"));return;}
     var d=j.data||{};
     var svg=d.qr_svg;
-    if(typeof svg!=="string"||!svg){qrShowErr("The server answered without a QR code. Try Again.");qrMsg("Try Again.");return;}
+    if(typeof svg!=="string"||!svg){qrShowErr(t("qr.err.noCode"));qrMsg(t("qr.status.tryAgain"));return;}
     $("qr-box").innerHTML=svg;
-    qrMsg("Scan the QR code with the Smart Life app. Waiting for the scan...");
+    qrMsg(t("qr.status.scan"));
     pollQr(d.token,code);
   })
-  .catch(function(e){qrShowErr("Network error: "+e.message);qrMsg("Try Again.");});
+  .catch(function(e){qrShowErr(tf("qr.err.network",{detail:e.message}));qrMsg(t("qr.status.tryAgain"));});
 }
 function pollQr(token,code){
   qrPolling=true;
@@ -420,20 +794,20 @@ function pollQr(token,code){
     .then(function(pair){
       if(!qrPolling||!qrDialog.open)return;
       var status=pair[0].status;var j=pair[1];
-      if(j.error){stopQrPoll();qrShowErr("Polling failed: "+errText(j));qrMsg("Try Again.");return;}
+      if(j.error){stopQrPoll();qrShowErr(tf("qr.err.poll",{detail:errText(j)}));qrMsg(t("qr.status.tryAgain"));return;}
       var d=j.data||{};
       if(d.status==="authenticated"){
         stopQrPoll();
-        qrMsg("Tuya sign-in restored. Refreshing devices...");
+        qrMsg(t("qr.status.restored"));
         load();
         return;
       }
-      qrMsg("Waiting for the scan... (pending)");
+      qrMsg(t("qr.status.pending"));
       qrTimer=setTimeout(tick,2000);
     })
     .catch(function(e){
       if(!qrPolling||!qrDialog.open)return;
-      qrMsg("Waiting for the scan... (network retry)");
+      qrMsg(t("qr.status.networkRetry"));
       qrTimer=setTimeout(tick,2000);
     });
   }
@@ -447,7 +821,7 @@ function rowsFor(devices,data){
   (devices.google_home||[]).forEach(function(d){
     var key=(d.backend||"google_home")+":"+d.id;
     var isP=protectedList.some(function(p){return (p.backend+":"+p.device_id)===key;});
-    list.push({backend:"google_home",label:"Google Home",group:(d.room&&String(d.room).trim())||"Other",id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind,_seq:0});
+    list.push({backend:"google_home",label:"Google Home",group:(d.room&&String(d.room).trim())||t("group.other"),id:d.id,name:d.name,room:d.room,traits:d.traits||[],isProtected:isP,category:d.kind,_seq:0});
   });
   (devices.tuya||[]).forEach(function(d){
     var key=(d.backend||"tuya")+":"+d.id;
@@ -492,7 +866,7 @@ function renderRows(rows){
   if(!rows.length){
     var box=document.createElement("div");
     box.className="device-empty";
-    box.textContent="No devices found. Check that both backends are logged in.";
+    box.textContent=t("empty.devices");
     slot.appendChild(box);
     return;
   }
@@ -501,7 +875,7 @@ function renderRows(rows){
   groupRows(rows).forEach(function(group){
     var bay=document.createElement("section");
     bay.className="bay";
-    bay.setAttribute("aria-label",group.name+" devices, "+group.backend);
+    bay.setAttribute("aria-label",tf("bay.label",{name:group.name,backend:group.backend}));
     var head=document.createElement("div");
     head.className="bay-head";
     var h=document.createElement("h3");
@@ -528,7 +902,7 @@ function renderRows(rows){
       li.appendChild(read);
       var state=document.createElement("p");
       state.className="state";
-      state.textContent="Loading state...";
+      state.textContent=t("state.loading");
       read.appendChild(state);
       var err=document.createElement("p");
       err.className="err-text";
@@ -549,7 +923,7 @@ function renderRows(rows){
       var fold=document.createElement("details");
       fold.hidden=true;
       var sum=document.createElement("summary");
-      sum.textContent="Details";
+      sum.textContent=t("details");
       fold.appendChild(sum);
       var foldBody=document.createElement("div");
       fold.appendChild(foldBody);
@@ -573,8 +947,8 @@ function showError(text){
   var slot=$("list-slot");slot.textContent="";
   slot._key=null;
   var box=document.createElement("div");box.className="err-box";box.setAttribute("role","alert");
-  box.textContent="Error: "+text;
-  var btn=document.createElement("button");btn.type="button";btn.textContent="Retry";
+  box.textContent=tf("err.prefix",{detail:text});
+  var btn=document.createElement("button");btn.type="button";btn.textContent=t("action.retry");
   btn.addEventListener("click",function(){load();});
   box.appendChild(document.createElement("br"));
   box.appendChild(btn);
@@ -587,34 +961,34 @@ function ghTraits(dev){return dev._state&&dev._state.traits?dev._state.traits:{}
 function tuyaPts(dev){return dev._state&&dev._state.data_points?dev._state.data_points:[];}
 function isCalib(code){return code.toLowerCase().indexOf("calib")!==-1;}
 function stateSummary(dev,data){
-  if(dev._online===false)return "State: offline";
-  if(!data)return "State: unknown";
+  if(dev._online===false)return t("state.offline");
+  if(!data)return t("state.unknown");
   if(dev.backend==="google_home"){
-    var t=data.traits||{};
-    if(t.onOff&&typeof t.onOff.onOff==="boolean")return "State: "+(t.onOff.onOff?"on":"off");
-    if(t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean")return "State: "+(t.lockUnlock.isLocked?"locked":"unlocked");
-    if(t.armDisarm&&typeof t.armDisarm.isArmed==="boolean")return "State: "+(t.armDisarm.isArmed?"armed":"disarmed");
-    if(t.brightness&&typeof t.brightness.brightness==="number")return "State: brightness "+t.brightness.brightness+"%";
-    if(t.volume&&typeof t.volume.currentVolume==="number")return "State: volume "+t.volume.currentVolume+"%";
-    return "State: online";
+    var tr=data.traits||{};
+    if(tr.onOff&&typeof tr.onOff.onOff==="boolean")return t(tr.onOff.onOff?"state.on":"state.off");
+    if(tr.lockUnlock&&typeof tr.lockUnlock.isLocked==="boolean")return t(tr.lockUnlock.isLocked?"state.locked":"state.unlocked");
+    if(tr.armDisarm&&typeof tr.armDisarm.isArmed==="boolean")return t(tr.armDisarm.isArmed?"state.armed":"state.disarmed");
+    if(tr.brightness&&typeof tr.brightness.brightness==="number")return tf("state.brightness",{value:nf(tr.brightness.brightness)});
+    if(tr.volume&&typeof tr.volume.currentVolume==="number")return tf("state.volume",{value:nf(tr.volume.currentVolume)});
+    return t("state.online");
   }
   var pts=data.data_points||[];
   var sw=null;
   for(var i=0;i<pts.length;i++){if(pts[i].code==="switch_1"){sw=pts[i];break;}}
-  if(sw)return "State: "+(sw.value?"on":"off");
-  return "State: online";
+  if(sw)return t(sw.value?"state.on":"state.off");
+  return t("state.online");
 }
 function snapshot(dev){
   try{return JSON.parse(JSON.stringify(dev._state||null));}catch(e){return dev._state||null;}
 }
 function rollback(dev,snap,msg){
   dev._state=snap;
-  var t=ghTraits(dev);
-  if(dev.backend==="google_home"&&t.deviceStatus&&typeof t.deviceStatus.online==="boolean")dev._online=t.deviceStatus.online;
+  var tr=ghTraits(dev);
+  if(dev.backend==="google_home"&&tr.deviceStatus&&typeof tr.deviceStatus.online==="boolean")dev._online=tr.deviceStatus.online;
   if(dev.backend!=="google_home"&&snap&&typeof snap.online==="boolean")dev._online=snap.online;
   buildControl(dev,snap);
   dev._stateEl.textContent=stateSummary(dev,snap);
-  dev._errEl.textContent="Error: "+msg;
+  dev._errEl.textContent=tf("err.prefix",{detail:msg});
   dev._errEl.hidden=false;
 }
 function setSyncing(dev){
@@ -622,12 +996,12 @@ function setSyncing(dev){
   var s=stateSummary(dev,dev._state);
   dev._stateEl.innerHTML="";
   dev._stateEl.appendChild(document.createTextNode(s+" "));
-  var n=document.createElement("span");n.className="sync-note";n.textContent="Syncing...";
+  var n=document.createElement("span");n.className="sync-note";n.textContent=t("syncing");
   dev._stateEl.appendChild(n);
 }
 function postForm(path,body){
   return fetch(path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body.toString()})
-  .then(function(r){return r.json().then(function(j){return [r.status,j];}).catch(function(){return [r.status,{error:{message:"Bad response"}}];});});
+  .then(function(r){return r.json().then(function(j){return [r.status,j];}).catch(function(){return [r.status,{error:{message:t("err.badResponse")}}];});});
 }
 
 // One write path for every control, so the guards cannot be skipped by a
@@ -657,7 +1031,7 @@ function guardedWrite(dev,opts){
       if(j&&j.error){
         if(isReauth(j,status))renderReauthBanner(dev.backend);
         var code=errCode(j);
-        rollback(dev,snap,code==="rate_limited"?"Too many failed password attempts. Wait, then try again.":errText(j));
+        rollback(dev,snap,code==="rate_limited"?t("err.rateLimited"):errText(j));
         return;
       }
       fetchState(dev);
@@ -685,11 +1059,11 @@ function tuyaSetPost(dev,onVal){
 
 function fetchState(dev){
   var my=++dev._seq;
-  dev._stateEl.textContent="Loading state...";
+  dev._stateEl.textContent=t("state.loading");
   if(dev._teleEl)renderTelemetry(dev,"loading",null);
   var path=dev.backend==="google_home"?("/api/gh/get?device="+encodeURIComponent(dev.id)):("/api/tuya/get?device="+encodeURIComponent(dev.id));
   fetch(path,{headers:{"Accept":"application/json"}}).then(function(r){
-    return r.json().then(function(j){return [r,j];}).catch(function(){return [r,{error:{message:"Bad response"}}];});
+    return r.json().then(function(j){return [r,j];}).catch(function(){return [r,{error:{message:t("err.badResponse")}}];});
   }).then(function(pair){
     if(my!==dev._seq)return;
     var r=pair[0];var j=pair[1];
@@ -699,7 +1073,7 @@ function fetchState(dev){
       // Device ID, which normal UI never shows.
       var msg=errText(j);
       var off=errCode(j)==="device_offline"||msg.toLowerCase().indexOf("offline")!==-1;
-      dev._stateEl.textContent="State: "+(off?"offline":msg);
+      dev._stateEl.textContent=off?t("state.offline"):tf("state.raw",{value:msg});
       dev._online=false;
       buildControl(dev,null,j);
       if(dev._teleEl)renderTelemetry(dev,"error",off?"offline":msg);
@@ -708,8 +1082,8 @@ function fetchState(dev){
     var data=j.data||{};
     dev._state=data;
     if(dev.backend==="google_home"){
-      var t=data.traits||{};
-      if(t.deviceStatus&&typeof t.deviceStatus.online==="boolean")dev._online=t.deviceStatus.online;
+      var tr=data.traits||{};
+      if(tr.deviceStatus&&typeof tr.deviceStatus.online==="boolean")dev._online=tr.deviceStatus.online;
       else if(typeof data.online==="boolean")dev._online=data.online;
     }else{
       if(typeof data.online==="boolean")dev._online=data.online;
@@ -719,7 +1093,7 @@ function fetchState(dev){
     if(dev._teleEl)renderTelemetry(dev,"data",data.telemetry);
   }).catch(function(e){
     if(my!==dev._seq)return;
-    dev._stateEl.textContent="State: "+e.message;
+    dev._stateEl.textContent=tf("state.raw",{value:e.message});
     buildControl(dev,null);
     if(dev._teleEl)renderTelemetry(dev,"error",e.message);
   });
@@ -729,17 +1103,17 @@ function fetchState(dev){
 function fmtTeleVal(entry){
   var v=(entry&&typeof entry.value!=="undefined"&&entry.value!==null)?entry.value:(entry?entry.raw:"");
   var s="";
-  if(typeof v==="number")s=String(Number(v.toFixed(1)));
+  if(typeof v==="number")s=nf(Number(v.toFixed(1)));
   else s=String(v==null?"":v);
-  var u=entry&&entry.unit?String(entry.unit):"";
-  return (s+(u?" "+u:"")).trim()||"Read-only";
+  var u=entry&&entry.unit?unitText(entry.unit):"";
+  return (s+(u?" "+u:"")).trim()||t("readonly");
 }
 function renderTelemetry(dev,mode,payload){
   var el=dev._teleEl;if(!el)return;
   el.textContent="";
-  var h=document.createElement("h3");h.textContent="Telemetry";el.appendChild(h);
+  var h=document.createElement("h3");h.textContent=t("telemetry");el.appendChild(h);
   if(mode==="loading"){
-    var p=document.createElement("p");p.className="note";p.textContent="Loading telemetry...";el.appendChild(p);return;
+    var p=document.createElement("p");p.className="note";p.textContent=t("telemetry.loading");el.appendChild(p);return;
   }
   if(mode==="error"){
     // An offline plug cannot answer for its readings, and the row already
@@ -748,15 +1122,15 @@ function renderTelemetry(dev,mode,payload){
     var e=document.createElement("p");
     e.className=off?"note":"err-text";
     if(!off)e.setAttribute("role","alert");
-    e.textContent=off?"Telemetry unavailable while the device is offline.":"Telemetry error: "+payload;
+    e.textContent=off?t("telemetry.offline"):tf("telemetry.error",{detail:payload});
     el.appendChild(e);
-    if(!off)el.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
+    if(!off)el.appendChild(makeBtn(t("action.retry"),true,function(){fetchState(dev);}));
     return;
   }
   var tele=payload||{};
   var keys=Object.keys(tele);
   if(!keys.length){
-    var q=document.createElement("p");q.className="note";q.textContent="No telemetry readings reported.";el.appendChild(q);return;
+    var q=document.createElement("p");q.className="note";q.textContent=t("telemetry.none");el.appendChild(q);return;
   }
   // Power is the one enlarged reading in the whole panel. Everything else
   // stays small so the eye lands on the breaker's live load.
@@ -764,14 +1138,14 @@ function renderTelemetry(dev,mode,payload){
   if(power){
     var row=document.createElement("p");row.className="power";
     var w=document.createElement("span");w.className="watts";
-    w.textContent=String(Number(Number(power.value!==undefined?power.value:power.raw).toFixed(1)));
-    var u=document.createElement("span");u.className="unit";u.textContent=power.unit?String(power.unit):"W";
+    w.textContent=nf(Number(power.value!==undefined?power.value:power.raw).toFixed(1));
+    var u=document.createElement("span");u.className="unit";u.textContent=power.unit?unitText(power.unit):"W";
     row.appendChild(w);row.appendChild(u);el.appendChild(row);
   }
   // One line of secondary telemetry. These are the readings the row carries;
   // no raw point behind them is printed a second time.
   var order=["cur_current","cur_voltage","add_ele"];
-  var labels={cur_current:"Current",cur_voltage:"Voltage",add_ele:"Energy"};
+  var labels={cur_current:t("telemetry.current"),cur_voltage:t("telemetry.voltage"),add_ele:t("telemetry.energy")};
   var rest=order.filter(function(k){return keys.indexOf(k)!==-1;});
   if(rest.length){
     // Units carry the meaning, so the line stays one line at 390; the labels
@@ -831,13 +1205,13 @@ function switchButton(dev,onVal,onToggle){
   b.setAttribute("aria-checked",onVal?"true":"false");
   var led=document.createElement("span");led.className="led";led.setAttribute("aria-hidden","true");
   var paddle=document.createElement("span");paddle.className="paddle";paddle.setAttribute("aria-hidden","true");
-  var pos=document.createElement("span");pos.className="pos";pos.textContent=onVal?"On":"Off";
+  var pos=document.createElement("span");pos.className="pos";pos.textContent=t(onVal?"switch.on":"switch.off");
   b.appendChild(led);b.appendChild(paddle);b.appendChild(pos);
   // Visible text stays in the accessible name (WCAG 2.5.3); the device name
   // that disambiguates switches is visually hidden instead of an aria-label.
   var hidden=document.createElement("span");
   hidden.className="visually-hidden";
-  hidden.textContent=" power for "+dev.name;
+  hidden.textContent=tf("switch.powerFor",{name:dev.name});
   b.appendChild(hidden);
   b.addEventListener("click",onToggle);
   return b;
@@ -853,15 +1227,15 @@ function guardCover(){
   // The cover is the literal word the operator asked for, not a colour cue.
   var g=document.createElement("span");
   g.className="guard";
-  g.textContent="protected";
+  g.textContent=t("guard.protected");
   return g;
 }
 function offlineControl(dev){
   var b=document.createElement("button");
   b.type="button";b.className="rocker offline";b.disabled=true;
   b.setAttribute("aria-disabled","true");
-  b.textContent="offline";
-  var hidden=document.createElement("span");hidden.className="visually-hidden";hidden.textContent=" power for "+dev.name;b.appendChild(hidden);
+  b.textContent=t("guard.offline");
+  var hidden=document.createElement("span");hidden.className="visually-hidden";hidden.textContent=tf("switch.powerFor",{name:dev.name});b.appendChild(hidden);
   return b;
 }
 function traitKnownName(trait){
@@ -877,14 +1251,14 @@ function traitKnownName(trait){
   return null;
 }
 function stateValSummary(v){
-  if(v===null||typeof v==="undefined")return "Read-only";
+  if(v===null||typeof v==="undefined")return t("readonly");
   if(typeof v!=="object")return String(v);
   var parts=[];
   Object.keys(v).slice(0,4).forEach(function(k){
     var x=v[k];
     parts.push(k+"="+(typeof x==="object"?JSON.stringify(x):String(x)));
   });
-  return parts.join(", ")||"Read-only";
+  return parts.join(", ")||t("readonly");
 }
 function findTraitState(t,declaredTrait){
   var short=String(declaredTrait).split(".").pop()||String(declaredTrait);
@@ -932,34 +1306,34 @@ function buildSwitchInto(dev,data,err,wrap){
   }
   var onVal=false;var hasSwitch=false;
   if(dev.backend==="google_home"){
-    var t=ghTraits(dev);
+    var tr=ghTraits(dev);
     var traits=dev.traits||[];
     var known={};
-    traits.forEach(function(tr){var k=traitKnownName(tr);if(k)known[k]=true;});
-    if(known.onOff){hasSwitch=true;onVal=!!(t.onOff&&typeof t.onOff.onOff==="boolean"&&t.onOff.onOff);}
+    traits.forEach(function(x){var k=traitKnownName(x);if(k)known[k]=true;});
+    if(known.onOff){hasSwitch=true;onVal=!!(tr.onOff&&typeof tr.onOff.onOff==="boolean"&&tr.onOff.onOff);}
     if(known.lock){
-      var isLocked=t.lockUnlock&&typeof t.lockUnlock.isLocked==="boolean"?t.lockUnlock.isLocked:null;
-      into.appendChild(actionButton(dev,isLocked===true?"Unlock":"Lock",function(){
+      var isLocked=tr.lockUnlock&&typeof tr.lockUnlock.isLocked==="boolean"?tr.lockUnlock.isLocked:null;
+      into.appendChild(actionButton(dev,t(isLocked===true?"lock.unlock":"lock.lock"),function(){
         var next=!(isLocked===true);
         guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"lockUnlock.isLocked",value:next,confirm:next?undefined:true}),{
           sensitive:!next,
-          sensitiveTitle:"Confirm sensitive action",
-          sensitiveText:"Unlock "+dev.name+"? Confirm, then enter the panel password if this Device is protected.",
-          sensitiveLabel:"Continue",
+          sensitiveTitle:t("confirm.title"),
+          sensitiveText:tf("sensitive.unlock",{name:dev.name}),
+          sensitiveLabel:t("action.continue"),
           mutate:function(st){if(st.traits&&st.traits.lockUnlock)st.traits.lockUnlock.isLocked=next;}
         }));
       }));
       return;
     }
     if(known.arm){
-      var isArmed=t.armDisarm&&typeof t.armDisarm.isArmed==="boolean"?t.armDisarm.isArmed:null;
-      into.appendChild(actionButton(dev,isArmed===true?"Disarm":"Arm",function(){
+      var isArmed=tr.armDisarm&&typeof tr.armDisarm.isArmed==="boolean"?tr.armDisarm.isArmed:null;
+      into.appendChild(actionButton(dev,t(isArmed===true?"arm.disarm":"arm.arm"),function(){
         var next=!(isArmed===true);
         guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"armDisarm.isArmed",value:next,confirm:next?undefined:true}),{
           sensitive:!next,
-          sensitiveTitle:"Confirm sensitive action",
-          sensitiveText:"Disarm "+dev.name+"? Confirm, then enter the panel password if this Device is protected.",
-          sensitiveLabel:"Continue",
+          sensitiveTitle:t("confirm.title"),
+          sensitiveText:tf("sensitive.disarm",{name:dev.name}),
+          sensitiveLabel:t("action.continue"),
           mutate:function(st){if(st.traits&&st.traits.armDisarm)st.traits.armDisarm.isArmed=next;}
         }));
       }));
@@ -998,22 +1372,22 @@ function buildSwitchInto(dev,data,err,wrap){
     }));
     return;
   }
-  into.appendChild(readonlyRow("Read-only"));
+  into.appendChild(readonlyRow(t("readonly")));
 }
 function buildTraitInto(dev,data,err,wrap){
   if(errCode(err)==="device_offline"||(!data&&dev._online===false)){
-    wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
+    wrap.appendChild(readonlyRow(t("offline.device")));
     setFold(dev,[]);
     return;
   }
   if(!data){
-    wrap.appendChild(readonlyRow("Could not load device state."));
-    wrap.appendChild(makeBtn("Retry",true,function(){fetchState(dev);}));
+    wrap.appendChild(readonlyRow(t("state.loadFailed")));
+    wrap.appendChild(makeBtn(t("action.retry"),true,function(){fetchState(dev);}));
     setFold(dev,[]);
     return;
   }
   if(dev._online===false){
-    wrap.appendChild(readonlyRow("Device is offline. Reconnect it first, then press Refresh."));
+    wrap.appendChild(readonlyRow(t("offline.device")));
     setFold(dev,[]);
     return;
   }
@@ -1027,21 +1401,21 @@ function buildTraitInto(dev,data,err,wrap){
       // Whatever the telemetry block prints is already on the row; a raw point
       // it covers must not appear a second time, even in the fold.
       if(p.code==="switch_1"||isCalib(p.code)||TELE_CODES[p.code]||tele[p.code])return;
-      foldRows.push(p.code+": "+stateValSummary(p.value)+" (Read-only)");
+      foldRows.push(tf("fold.row",{label:p.code,value:stateValSummary(p.value)}));
     });
     if(!hasSwitch&&pts.length>0){
-      foldRows.unshift("No power switch point on this device. Values below are read-only.");
+      foldRows.unshift(t("fold.noSwitch"));
     }
     setFold(dev,foldRows);
     return;
   }
-  var t=ghTraits(dev);
+  var tr=ghTraits(dev);
   var traits=dev.traits||[];
   var known={};
-  traits.forEach(function(tr){var k=traitKnownName(tr);if(k)known[k]=true;});
+  traits.forEach(function(x){var k=traitKnownName(x);if(k)known[k]=true;});
   if(known.brightness){
-    var b0=t.brightness&&typeof t.brightness.brightness==="number"?t.brightness.brightness:0;
-    wrap.appendChild(sliderField(dev,"Brightness",0,100,1,b0,function(v){return v+"%";},function(v){
+    var b0=tr.brightness&&typeof tr.brightness.brightness==="number"?tr.brightness.brightness:0;
+    wrap.appendChild(sliderField(dev,t("traits.brightness"),0,100,1,b0,function(v){return nf(v)+"%";},function(v){
       guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"brightness",value:v}),{
         mutate:function(st){
           if(!st.traits)st.traits={};if(!st.traits.brightness)st.traits.brightness={};
@@ -1052,9 +1426,9 @@ function buildTraitInto(dev,data,err,wrap){
   }
   if(known.color){
     var c0=4200;
-    var cs=t.color||t.colorSetting;
+    var cs=tr.color||tr.colorSetting;
     if(cs){if(typeof cs.colorTemperature==="number")c0=cs.colorTemperature;else if(typeof cs.temperatureK==="number")c0=cs.temperatureK;}
-    wrap.appendChild(sliderField(dev,"Color temperature",1000,10000,100,c0,function(v){return v+" K";},function(v){
+    wrap.appendChild(sliderField(dev,t("traits.colorTemp"),1000,10000,100,c0,function(v){return nf(v)+" K";},function(v){
       guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"color.colorTemperature",value:v}),{
         mutate:function(st){
           if(!st.traits)st.traits={};
@@ -1065,8 +1439,8 @@ function buildTraitInto(dev,data,err,wrap){
     }));
   }
   if(known.volume){
-    var v0=t.volume&&typeof t.volume.currentVolume==="number"?t.volume.currentVolume:0;
-    wrap.appendChild(sliderField(dev,"Volume",0,100,1,v0,function(v){return v+"%";},function(v){
+    var v0=tr.volume&&typeof tr.volume.currentVolume==="number"?tr.volume.currentVolume:0;
+    wrap.appendChild(sliderField(dev,t("traits.volume"),0,100,1,v0,function(v){return nf(v)+"%";},function(v){
       guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"volume.currentVolume",value:v}),{
         mutate:function(st){
           if(!st.traits)st.traits={};if(!st.traits.volume)st.traits.volume={};
@@ -1076,7 +1450,7 @@ function buildTraitInto(dev,data,err,wrap){
     }));
   }
   if(known.thermostat){
-    var th=t.temperatureSetting||t.thermostat||t.temperature||{};
+    var th=tr.temperatureSetting||tr.thermostat||tr.temperature||{};
     var mode=th.mode||th.thermostatMode||"auto";
     var setpoint=th.thermostatTemperatureSetpoint;
     if(typeof setpoint!=="number")setpoint=th.thermostatSetpoint;
@@ -1084,12 +1458,13 @@ function buildTraitInto(dev,data,err,wrap){
     if(typeof setpoint!=="number")setpoint=th.thermostatSetpointHigh;
     if(typeof setpoint!=="number")setpoint=21;
     var modes=["off","heat","cool","heatcool","auto"];
+    var modeKeys={off:"mode.off",heat:"mode.heat",cool:"mode.cool",heatcool:"mode.heatcool",auto:"mode.auto"};
     var row=document.createElement("div");row.className="ctrl-row";
     var f1=document.createElement("div");f1.className="field";
-    var idM=uid(dev,"mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent="Mode";f1.appendChild(lm);
+    var idM=uid(dev,"mode-");var lm=document.createElement("label");lm.htmlFor=idM;lm.textContent=t("traits.mode");f1.appendChild(lm);
     var sel=document.createElement("select");sel.id=idM;
     modes.forEach(function(m){
-      var o=document.createElement("option");o.value=m;o.textContent=m;sel.appendChild(o);
+      var o=document.createElement("option");o.value=m;o.textContent=t(modeKeys[m]||"mode.auto");sel.appendChild(o);
     });
     if(modes.indexOf(mode)===-1){
       var o2=document.createElement("option");o2.value=mode;o2.textContent=mode;
@@ -1098,15 +1473,15 @@ function buildTraitInto(dev,data,err,wrap){
     sel.value=mode;
     f1.appendChild(sel);row.appendChild(f1);
     var f2=document.createElement("div");f2.className="field";
-    var idS=uid(dev,"setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent="Setpoint (degrees)";f2.appendChild(ls);
+    var idS=uid(dev,"setpoint-");var ls=document.createElement("label");ls.htmlFor=idS;ls.textContent=t("traits.setpoint");f2.appendChild(ls);
     var num=document.createElement("input");
     num.type="number";num.id=idS;num.step="0.5";num.min="-20";num.max="60";
     num.value=String(setpoint);num.setAttribute("inputmode","decimal");
     f2.appendChild(num);row.appendChild(f2);
-    var apply=document.createElement("button");apply.type="button";apply.textContent="Apply";
+    var apply=document.createElement("button");apply.type="button";apply.textContent=t("action.apply");
     apply.addEventListener("click",function(){
       var m=sel.value;var sp=Number(num.value);
-      if(isNaN(sp)){dev._errEl.textContent="Error: Enter a setpoint number.";dev._errEl.hidden=false;return;}
+      if(isNaN(sp)){dev._errEl.textContent=t("err.setpoint");dev._errEl.hidden=false;return;}
       guardedWrite(dev,Object.assign(ghSetPost(dev,{trait:"thermostat",value:sp,mode:m,setpoint:sp}),{
         mutate:function(st){
           if(!st.traits)st.traits={};
@@ -1121,21 +1496,21 @@ function buildTraitInto(dev,data,err,wrap){
   }
   var renderedKeys=["deviceStatus","onOff","brightness","colorSetting","color","temperatureSetting","thermostat","temperature","volume","lockUnlock","armDisarm"];
   var foldRows=[];
-  traits.forEach(function(tr){
-    if(!traitKnownName(tr)){
-      var found=findTraitState(t||{},tr);
-      var short=String(tr).split(".").pop()||String(tr);
-      foldRows.push(short+": "+stateValSummary(found[1])+" (Read-only)");
+  traits.forEach(function(x){
+    if(!traitKnownName(x)){
+      var found=findTraitState(tr||{},x);
+      var short=String(x).split(".").pop()||String(x);
+      foldRows.push(tf("fold.row",{label:short,value:stateValSummary(found[1])}));
       if(renderedKeys.indexOf(found[0])===-1)renderedKeys.push(found[0]);
     }
   });
-  Object.keys(t||{}).forEach(function(k){
+  Object.keys(tr||{}).forEach(function(k){
     if(renderedKeys.indexOf(k)===-1){
-      foldRows.push(k+": "+stateValSummary(t[k])+" (Read-only)");
+      foldRows.push(tf("fold.row",{label:k,value:stateValSummary(tr[k])}));
     }
   });
   if(!Object.keys(known).length&&!traits.length){
-    foldRows.push("No known traits on this device. State shown above is read-only.");
+    foldRows.push(t("fold.noTraits"));
   }
   setFold(dev,foldRows);
 }
@@ -1165,7 +1540,7 @@ function load(){
   if(loading)return Promise.resolve();
   loading=true;
   var msg=$("status-msg");
-  msg.textContent="Loading devices...";
+  msg.textContent=t("status.loading");
   var devicesPromise=fetch("/api/devices",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
   var statusPromise=fetch("/api/status",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
   return Promise.all([devicesPromise,statusPromise]).then(function(pair){
@@ -1180,7 +1555,7 @@ function load(){
     // One live status line doubles as the list's label, so no separate
     // "Breakers" heading floats under it.
     var rows=rowsFor(data,data);
-    msg.textContent="Updated. "+rows.length+" "+(rows.length===1?"device":"devices")+".";
+    msg.textContent=tf(rows.length===1?"status.updated.one":"status.updated.other",{count:NF.format(rows.length)});
     renderRows(rows);
     loading=false;lastDone=Date.now();schedule(POLL_MS);
   }).catch(function(e){
@@ -1188,6 +1563,7 @@ function load(){
     loading=false;lastDone=Date.now();schedule(POLL_MS);
   });
 }
+applyI18n();
 $("refresh").addEventListener("click",function(){load();});
 $("signout").addEventListener("click",function(){
   fetch("/logout",{method:"POST"}).then(function(){location.href="/login";}).catch(function(){location.href="/login";});
