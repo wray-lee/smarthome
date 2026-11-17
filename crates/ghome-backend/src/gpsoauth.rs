@@ -159,8 +159,19 @@ pub fn exchange_oauth_token(
             ),
             Exit::Upstream,
         )),
-        None => Err(failure("oauth_token exchange", &fields)),
+        None => {
+            let (body, exit) = failure("oauth_token exchange", &fields);
+            Err((with_oauth_hint(body, &fields), exit))
+        }
     }
+}
+
+/// A stale oauth_token fails as BadAuthentication; point at a fresh one.
+fn with_oauth_hint(mut body: ErrorBody, fields: &BTreeMap<String, String>) -> ErrorBody {
+    if fields.get("Error").map(String::as_str) == Some("BadAuthentication") {
+        body.message.push_str("; oauth_token is single-use and expires within minutes: get a fresh one from https://accounts.google.com/EmbeddedSetup and retry");
+    }
+    body
 }
 
 /// Master token → Bearer for `service` (an `oauth2:<scope>` string).

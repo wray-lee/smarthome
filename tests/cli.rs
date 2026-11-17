@@ -14,6 +14,7 @@ fn home(db: &Path) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_home"));
     cmd.arg("--db").arg(db);
     cmd.env_remove("HOME_GH_EMAIL");
+    cmd.env_remove("HOME_GH_TOKEN");
     cmd
 }
 
@@ -273,6 +274,264 @@ async fn a_bad_login_token_is_exit_2_and_stores_nothing() {
     assert_eq!(json["error"]["code"], "usage");
     assert!(auth.received_requests().await.unwrap().is_empty());
     assert!(!db.exists() || credential_rows(&db) == 0);
+}
+
+/// Spawn with stdin piped, optionally write `input`, and keep stdin open
+/// (docker exec -i style) until the process exits. Waits at most 5 seconds.
+fn run_with_open_stdin(mut cmd: Command, input: Option<&[u8]>) -> (i32, String, String) {
+    use std::io::Write;
+    cmd.stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let mut child = cmd.spawn().expect("spawning the home binary");
+    let mut stdin = child.stdin.take().unwrap();
+    if let Some(bytes) = input {
+        stdin.write_all(bytes).expect("writing stdin");
+        stdin.flush().expect("flushing stdin");
+    }
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let status = loop {
+        if let Some(status) = child.try_wait().expect("waiting for the binary") {
+            break status;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "the binary still waited for EOF on stdin after 5 s"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    };
+    let mut stdout = Vec::new();
+    std::io::Read::read_to_end(&mut child.stdout.take().unwrap(), &mut stdout).unwrap();
+    let mut stderr = Vec::new();
+    std::io::Read::read_to_end(&mut child.stderr.take().unwrap(), &mut stderr).unwrap();
+    drop(stdin);
+    (
+        status.code().expect("an exit code"),
+        String::from_utf8(stdout).unwrap(),
+        String::from_utf8(stderr).unwrap(),
+    )
+}
+
+/// The stored master token, or None when nothing was saved.
+fn stored_master(db: &Path) -> Option<String> {
+    let conn = rusqlite::Connection::open(db).ok()?;
+    let cred: String = conn
+        .query_row(
+            "SELECT json FROM credentials WHERE backend = 'google_home'",
+            [],
+            |r| r.get(0),
+        )
+        .ok()?;
+    let cred: serde_json::Value = serde_json::from_str(&cred).ok()?;
+    cred["master"].as_str().map(str::to_string)
+}
+
+/// Pasting one line and pressing Enter must not wait for EOF: a docker exec
+/// without -i, or a terminal left open, never sends one.
+#[tokio::test]
+async fn interactive_paste_exits_without_eof() {
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &foyer, &auth);
+    cmd.args(["gh", "login", "--email", "user@example.com"]);
+    let (code, stdout, stderr) = run_with_open_stdin(cmd, Some(b"aas_et/pasted-master\n"));
+    assert_eq!(code, 0, "{stdout} {stderr}");
+    assert_eq!(stored_master(&db).as_deref(), Some("aas_et/pasted-master"));
+    assert!(
+        !stderr.contains("EmbeddedSetup"),
+        "piped stdin is not a terminal, so no guidance: {stderr}"
+    );
+}
+
+/// Under a real pty the guidance goes to stderr and stdout stays one JSON
+/// document. `script` allocates the pty; the child's stdout goes to a file so
+/// the two streams can be told apart.
+#[tokio::test]
+async fn a_terminal_stdin_gets_step_by_step_guidance() {
+    if Command::new("script").arg("--version").output().is_err() {
+        eprintln!("skipping: no script(1) to allocate a pty");
+        return;
+    }
+    let (dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    let bin = env!("CARGO_BIN_EXE_home");
+    let token_file = dir.path().join("pasted");
+    let out_file = dir.path().join("login.json");
+    std::fs::write(&token_file, "aas_et/pty-master\n").unwrap();
+    let command_line = format!(
+        "{} --db {} gh login --email user@example.com > {}",
+        shell_quote(bin),
+        shell_quote(db.to_str().unwrap()),
+        shell_quote(out_file.to_str().unwrap()),
+    );
+    let mut cmd = Command::new("script");
+    cmd.args(["-qec", &command_line, "/dev/null"]);
+    cmd.env_remove("HOME_GH_EMAIL");
+    cmd.env_remove("HOME_GH_TOKEN");
+    cmd.env("HOME_GPSOAUTH_URL", format!("{}/auth", auth.uri()));
+    cmd.env(
+        "HOME_FOYER_URL",
+        format!("{}/$rpc/google.internal.home.foyer.v1.", foyer.uri()),
+    );
+    cmd.stdin(std::fs::File::open(&token_file).unwrap())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let out = cmd.output().expect("spawning script");
+    let pty = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert_eq!(out.status.code(), Some(0), "{pty} {stderr}");
+    for marker in [
+        "https://accounts.google.com/EmbeddedSetup",
+        "oauth_token",
+        "oauth2_4/",
+        "aas_et/",
+        "Paste the token and press Enter",
+        "HOME_GH_TOKEN",
+        "--token-file",
+    ] {
+        assert!(pty.contains(marker), "missing {marker:?} in {pty:?}");
+    }
+    let json: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&out_file).unwrap()).expect("one JSON document");
+    assert_eq!(json["ok"], true, "{json}");
+    assert_eq!(stored_master(&db).as_deref(), Some("aas_et/pty-master"));
+}
+
+fn shell_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', r"'\''"))
+}
+
+/// `printf 'aas_et/...' | home gh login` sends no trailing newline.
+#[tokio::test]
+async fn a_piped_token_without_a_newline_is_stored() {
+    use std::io::Write;
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &foyer, &auth);
+    cmd.args(["gh", "login", "--email", "user@example.com"]);
+    cmd.stdin(std::process::Stdio::piped());
+    let mut child = cmd.spawn().unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"aas_et/piped-master")
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(0), "{stdout}");
+    assert_eq!(stored_master(&db).as_deref(), Some("aas_et/piped-master"));
+}
+
+/// `HOME_GH_TOKEN` wins over stdin and never touches it, so a docker exec
+/// without -i exits instead of hanging.
+#[tokio::test]
+async fn home_gh_token_needs_no_stdin() {
+    let (_dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &foyer, &auth);
+    cmd.args(["gh", "login", "--email", "user@example.com"]);
+    cmd.env("HOME_GH_TOKEN", "aas_et/env-master");
+    let (code, stdout, stderr) = run_with_open_stdin(cmd, Some(b"aas_et/stdin-master\n"));
+    assert_eq!(code, 0, "{stdout} {stderr}");
+    assert_eq!(stored_master(&db).as_deref(), Some("aas_et/env-master"));
+}
+
+/// Both fallbacks leave stdin alone; the file beats the env, and `-` reads
+/// stdin like a pipe.
+#[tokio::test]
+async fn a_token_file_needs_no_stdin_and_beats_the_env() {
+    let (dir, db) = temp_db();
+    let (foyer, auth) = fakes().await;
+    let file = dir.path().join("token");
+    std::fs::write(&file, "aas_et/file-master\n").unwrap();
+
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &foyer, &auth);
+    cmd.args(["gh", "login", "--email", "user@example.com"]);
+    cmd.arg("--token-file").arg(&file);
+    cmd.env("HOME_GH_TOKEN", "aas_et/env-master");
+    let (code, stdout, stderr) = run_with_open_stdin(cmd, Some(b"aas_et/stdin-master\n"));
+    assert_eq!(code, 0, "{stdout} {stderr}");
+    assert_eq!(stored_master(&db).as_deref(), Some("aas_et/file-master"));
+
+    let mut cmd = home(&db);
+    point_at(&mut cmd, &foyer, &auth);
+    cmd.args(["gh", "login", "--email", "user@example.com"]);
+    cmd.arg("--token-file").arg("-");
+    cmd.env("HOME_GH_TOKEN", "aas_et/env-master");
+    let (code, stdout, stderr) = run_with_open_stdin(cmd, Some(b"aas_et/dash-master\n"));
+    assert_eq!(code, 0, "{stdout} {stderr}");
+    assert_eq!(stored_master(&db).as_deref(), Some("aas_et/dash-master"));
+}
+
+#[tokio::test]
+async fn a_missing_or_unreadable_token_file_is_usage_exit_2() {
+    let (dir, db) = temp_db();
+    for path in [dir.path().join("missing"), dir.path().to_path_buf()] {
+        let mut cmd = home(&db);
+        cmd.args(["gh", "login", "--email", "user@example.com"]);
+        cmd.arg("--token-file").arg(&path);
+        cmd.stdin(std::process::Stdio::null());
+        let (code, json) = run(&mut cmd);
+        assert_eq!(code, 2, "{json}");
+        assert_eq!(json["error"]["code"], "usage");
+        assert!(
+            json["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("token file"),
+            "{json}"
+        );
+    }
+    assert_eq!(credential_rows(&db), 0);
+}
+
+/// A rejected token must not be echoed back, whatever its source.
+#[tokio::test]
+async fn an_invalid_token_is_never_echoed() {
+    let (_dir, db) = temp_db();
+    let mut cmd = home(&db);
+    cmd.args(["gh", "login", "--email", "user@example.com"]);
+    cmd.env("HOME_GH_TOKEN", "secret-not-a-token-123");
+    let (code, stdout, stderr) = run_with_open_stdin(cmd, None);
+    assert_eq!(code, 2, "{stdout} {stderr}");
+    assert!(!stdout.contains("secret-not-a-token-123"), "{stdout}");
+    assert!(!stderr.contains("secret-not-a-token-123"), "{stderr}");
+}
+
+/// An expired or reused oauth_token fails as reauth_required and says how to
+/// get a fresh one, without echoing the token.
+#[tokio::test]
+async fn a_rejected_oauth_token_says_how_to_get_a_fresh_one() {
+    let (_dir, db) = temp_db();
+    let auth = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/auth"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("Error=BadAuthentication\n"))
+        .mount(&auth)
+        .await;
+    let mut cmd = home(&db);
+    cmd.args(["gh", "login", "--email", "you@example.com"]);
+    cmd.env("HOME_GPSOAUTH_URL", format!("{}/auth", auth.uri()));
+    cmd.env("HOME_GH_TOKEN", "oauth2_4/stale-token");
+    let (code, stdout, stderr) = run_with_open_stdin(cmd, None);
+    assert_eq!(code, 5, "{stdout} {stderr}");
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("one JSON document");
+    assert_eq!(json["error"]["code"], "reauth_required", "{json}");
+    let message = json["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains(
+            "oauth_token is single-use and expires within minutes: get a fresh one from https://accounts.google.com/EmbeddedSetup and retry"
+        ),
+        "{message}"
+    );
+    assert!(!stdout.contains("stale-token"), "{stdout}");
+    assert!(!stderr.contains("stale-token"), "{stderr}");
+    assert_eq!(credential_rows(&db), 0);
 }
 
 /// Row count in `credentials`, or 0 when the table does not exist yet.

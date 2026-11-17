@@ -2,7 +2,7 @@
 //! document and the exit code follows the contract in `home_store::contract`.
 
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::{BufRead, IsTerminal, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -62,7 +62,8 @@ struct ServeArgs {
 
 #[derive(Subcommand, Debug)]
 enum GhCmd {
-    /// Store a Google Home master token (or oauth_token) read from stdin.
+    /// Store a Google Home master token or oauth_token: `--token-file`,
+    /// `HOME_GH_TOKEN`, or one line from stdin.
     Login(LoginArgs),
     /// Print every Google Home Device as JSON.
     Devices,
@@ -158,6 +159,63 @@ struct LoginArgs {
     /// Replace the stored Android id instead of reusing it.
     #[arg(long, value_name = "ID")]
     android_id: Option<String>,
+    /// Read the token from this file instead of stdin (`-` means stdin).
+    #[arg(long, value_name = "PATH")]
+    token_file: Option<String>,
+}
+
+/// Printed when stdin is a terminal and no fallback is set. The URL and the
+/// cookie name match the reference guide in `tmp/ghome-src`.
+const LOGIN_HELP: &str = "\
+How to get a Google Home token:
+  Option 1, oauth_token:
+    1. Open https://accounts.google.com/EmbeddedSetup in a desktop browser and
+       sign in with the Google account that owns your home.
+    2. After the \"I agree\" page, open DevTools > Application/Storage > Cookies
+       for accounts.google.com and copy the value of the `oauth_token` cookie.
+       It starts with oauth2_4/ and is single-use, so paste it right away.
+  Option 2, master token: paste an existing token that starts with aas_et/.
+Paste the token and press Enter (Ctrl-C to cancel):
+Without a terminal, set HOME_GH_TOKEN or pass --token-file <PATH> (--token-file - reads stdin).
+";
+
+/// `--token-file`, then `HOME_GH_TOKEN`, then stdin. Active stdin is read one
+/// line at a time, so an open terminal or `docker exec -i` does not hang it.
+fn login_token(token_file: Option<&str>) -> Result<String, (ErrorBody, Exit)> {
+    let raw = match token_file {
+        Some("-") => read_stdin_token()?,
+        Some(path) => std::fs::read_to_string(path).map_err(|e| {
+            (
+                ErrorBody::usage(format!("reading token file {path}: {e}")),
+                Exit::Usage,
+            )
+        })?,
+        None => match std::env::var("HOME_GH_TOKEN") {
+            Ok(token) if !token.trim().is_empty() => token,
+            _ => read_stdin_token()?,
+        },
+    };
+    let token = raw.trim().to_string();
+    if token.is_empty() {
+        return Err((
+            ErrorBody::usage("expected a master token (aas_et/…) or an oauth_token (oauth2_4/…)"),
+            Exit::Usage,
+        ));
+    }
+    Ok(token)
+}
+
+fn read_stdin_token() -> Result<String, (ErrorBody, Exit)> {
+    let stdin = std::io::stdin();
+    if stdin.is_terminal() {
+        eprint!("{LOGIN_HELP}");
+    }
+    let mut token = String::new();
+    stdin
+        .lock()
+        .read_line(&mut token)
+        .map_err(|e| (ErrorBody::usage(format!("reading stdin: {e}")), Exit::Usage))?;
+    Ok(token)
 }
 
 #[derive(Args, Debug)]
@@ -289,22 +347,10 @@ fn login(store: &Store, args: &LoginArgs) -> Result<serde_json::Value, (ErrorBod
             Exit::Usage,
         )
     })?;
-    let mut token = String::new();
-    std::io::stdin()
-        .read_to_string(&mut token)
-        .map_err(|e| (ErrorBody::usage(format!("reading stdin: {e}")), Exit::Usage))?;
-    let token = token.trim().to_string();
-    if token.is_empty() {
-        return Err((
-            ErrorBody::usage(
-                "expected a master token (aas_et/…) or an oauth_token (oauth2_4/…) on stdin",
-            ),
-            Exit::Usage,
-        ));
-    }
+    let token = login_token(args.token_file.as_deref())?;
     // The Android id is bound to the master token and every Bearer minted
     // from it, so a second login keeps the stored one; only an explicit
-    // `--android_id` replaces it. The token is not verified here: a bad one
+    // `--android-id` replaces it. The token is not verified here: a bad one
     // shows up at the first `home gh devices` (see README).
     let stored = Credential::load(store).map_err(storage)?;
     let android_id = match &args.android_id {
@@ -1506,6 +1552,17 @@ fn index_page() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_login_guidance_names_the_url_the_cookie_and_both_prefixes() {
+        assert!(LOGIN_HELP.contains("https://accounts.google.com/EmbeddedSetup"));
+        assert!(LOGIN_HELP.contains("oauth_token"));
+        assert!(LOGIN_HELP.contains("oauth2_4/"));
+        assert!(LOGIN_HELP.contains("aas_et/"));
+        assert!(LOGIN_HELP.contains("HOME_GH_TOKEN"));
+        assert!(LOGIN_HELP.contains("--token-file"));
+        assert!(LOGIN_HELP.contains("Paste the token and press Enter"));
+    }
 
     #[test]
     fn device_references_name_a_backend_and_an_id() {

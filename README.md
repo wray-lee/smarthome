@@ -130,12 +130,28 @@ only in the database.
 ## Sign in and list Devices
 
 The credential is the Google master token (equivalent to the account
-password) or a one-time browser `oauth_token`. It goes to stdin, never argv:
+password) or a one-time browser `oauth_token`. It comes from `--token-file
+<PATH>`, `HOME_GH_TOKEN`, or one line on stdin, in that order; the token
+itself never goes in argv:
 
 ```console
-home gh login --email you@example.com
+home gh login --email you@example.com           # interactive: paste, press Enter
+HOME_GH_TOKEN='aas_et/…' home gh login --email you@example.com
+home gh login --email you@example.com --token-file /run/secrets/gh-token
 home gh devices
 ```
+
+With a terminal on stdin, `home gh login` prints the steps to stderr before
+reading and stores the pasted line as soon as you press Enter. Without one it
+reads a single line from stdin (a pipe works with or without a trailing
+newline), so `docker exec -i` no longer needs EOF.
+
+To get an `oauth_token`, open https://accounts.google.com/EmbeddedSetup in a
+desktop browser and sign in with the Google account that owns the home. After
+the "I agree" page, open DevTools > Application/Storage > Cookies for
+accounts.google.com and copy the `oauth_token` cookie (it starts with
+`oauth2_4/`). It is single-use and expires in minutes, so paste it right away.
+An existing master token starts with `aas_et/` and can be pasted the same way.
 
 Both commands print one JSON document. `home gh login` stores the master
 token and the fixed Android id in SQLite.
@@ -143,11 +159,12 @@ token and the fixed Android id in SQLite.
 `home gh login` does not verify the master token: anything that starts with
 `aas_et/` (or `oauth2_4/`, which is exchanged first) is stored, and a bad
 token surfaces at the first `home gh devices` as `reauth_required` (exit 5).
-Login never calls foyer, so it contacts Google only for the `oauth_token`
-exchange.
+An `oauth_token` that Google rejects gives `reauth_required` too, with a hint
+to fetch a fresh one: it is single-use and expires within minutes. Login never
+calls foyer, so it contacts Google only for the `oauth_token` exchange.
 
 The Android id is bound to the master token (every Bearer is minted for it),
-so a repeated login reuses the stored one. `--android_id <ID>` replaces it
+so a repeated login reuses the stored one. `--android-id <ID>` replaces it
 and drops the cached Bearer. `--help` and `--version` print their text on
 stderr and still write one JSON document to stdout.
 
@@ -401,10 +418,18 @@ with mode 600, and the password never appears in argv or in the image. Use
 `0.0.0.0`, so the host-side loopback binding is the only thing keeping the
 panel off the LAN (same rule as the Web Panel section).
 
-Sign both Backends in once, inside the container:
+Sign both Backends in once, inside the container. `docker exec -it` gives the
+Google login a terminal, so it prints the steps and accepts the pasted token
+followed by Enter; the two non-interactive fallbacks read the token from the
+environment or from a file in the `/data` volume (the file is the safer one,
+because `docker inspect` shows the environment):
 
 ```console
-echo 'aas_et/…' | docker exec -i home home gh login --email you@example.com
+docker exec -it home home gh login --email you@example.com
+docker exec -e HOME_GH_TOKEN='oauth2_4/…' home home gh login --email you@example.com
+printf '%s\n' 'aas_et/…' | docker run --rm -i -v home-data:/data \
+  --entrypoint sh home:0.2.0 -c 'umask 077; cat > /data/gh-token'
+docker exec home home gh login --email you@example.com --token-file /data/gh-token
 docker exec -it -e HOME_TUYA_USER_CODE=… home home tuya login
 ```
 
