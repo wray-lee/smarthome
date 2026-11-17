@@ -83,32 +83,45 @@ function t(key){
 /* The panel's tokens, by name and by value, so both pages read as one product.
 light-dark() picks the pair from the used color-scheme, which data-theme pins. */
 color-scheme:light dark;
---page:light-dark(#DDE1E3,#1B1F22);
---page-ink:light-dark(#2A2F33,#E9ECEE);
---bay:light-dark(#F1F3F4,#262C30);
---ink:light-dark(#2A2F33,#E9ECEE);
---line:light-dark(#5A6166,#9AA3A9);
---rail:light-dark(#2A2F33,#0E1113);
---rail-ink:light-dark(#E9ECEE,#E9ECEE);
---err:light-dark(#B3261E,#FF9E94);
---focus:light-dark(#2A2F33,#F2B705);
---focus-rail:#F2B705;
+--page:light-dark(#E4E3DE,#14181A);
+--page-ink:light-dark(#232A2B,#EAE7DF);
+--bay:light-dark(#F4F3EF,#1C2224);
+--row:light-dark(#FBFAF7,#262E30);
+--ink:light-dark(#232A2B,#EAE7DF);
+--ink2:light-dark(#3F4849,#C6CFCF);
+--muted:light-dark(#555E61,#A0A9AB);
+--line:light-dark(#6F797B,#6F7A7D);
+--rule:light-dark(#B4BAB8,#394345);
+--rail:light-dark(#263032,#0B0F10);
+--rail-ink:light-dark(#F3F2EC,#EAE7DF);
+--rail-ink2:light-dark(#B9C2C2,#A7B0B2);
+--err:light-dark(#93251C,#FFA096);
+--accent:light-dark(#1D5A63,#6FBCC1);
+--lamp:light-dark(#7FD3CE,#8FDCD6);
+--focus:var(--accent);
+--focus-rail:light-dark(#7FD3CE,#8FDCD6);
+--btn:light-dark(#FBFAF7,#EAE7DF);
+--btn-ink:light-dark(#232A2B,#14181A);
 }
 :root[data-theme="dark"]{color-scheme:dark}
 :root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink)}
-header{padding:1rem;background:var(--rail);color:var(--rail-ink);border-block-end:3px solid var(--focus-rail)}
+header{padding:1rem;background:var(--rail);color:var(--rail-ink);border-block-end:1px solid var(--rail-ink2)}
 h1{margin:0;font-size:1.25rem;line-height:1.25;font-weight:700}
 main{max-inline-size:26rem;margin-inline:auto;padding:1.5rem 1.25rem}
-form{display:flex;flex-direction:column;gap:.375rem;background:var(--bay);border:1.5px solid var(--line);border-block-start:3px solid var(--focus-rail);padding:1.25rem}
+/* The form is a panel bolted to the backplate: a real 1px frame, a petrol top
+edge, no shadow. */
+form{display:flex;flex-direction:column;gap:.375rem;background:var(--bay);border:1px solid var(--line);border-block-start:3px solid var(--accent);padding:1.25rem}
 h2{margin:0 0 .25rem;font-size:1.125rem;line-height:1.3;color:var(--ink)}
 label{font-weight:600;color:var(--ink)}
-input[type="password"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.75rem;border:1.5px solid var(--line);border-radius:0;color:var(--ink);background:var(--page);width:100%}
-button[type="submit"]{font:inherit;font-size:1rem;min-height:48px;margin-top:.5rem;padding:.75rem 1.25rem;border:1.5px solid var(--ink);border-radius:0;background:var(--ink);color:var(--bay);font-weight:700;cursor:pointer;width:100%}
+input[type="password"]{font:inherit;font-size:max(1rem,1em);min-height:48px;padding:.75rem;border:1px solid var(--line);border-radius:2px;color:var(--ink);background:var(--row);width:100%}
+button[type="submit"]{font:inherit;font-size:1rem;min-height:48px;margin-top:.5rem;padding:.75rem 1.25rem;border:1px solid var(--accent);border-radius:2px;background:var(--accent);color:var(--page);font-weight:700;cursor:pointer;width:100%}
+button[type="submit"]:hover{border-color:var(--ink)}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 header :focus-visible{outline-color:var(--focus-rail)}
-[role="alert"]{margin:.25rem 0 0;padding:.75rem 1rem;border:1.5px solid var(--err);background:var(--bay);color:var(--err)}
+/* An error is a real border plus the word; never colour alone. */
+[role="alert"]{margin:.25rem 0 0;padding:.75rem 1rem;border:1px solid var(--line);border-inline-start:4px solid var(--err);background:var(--row);color:var(--err)}
 @media (max-width:320px){main{padding:1rem .75rem}}
 </style>
 </head>
