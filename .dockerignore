@@ -5,3 +5,8 @@
 !Cargo.lock
 !crates/**
 !src/**
+# Offline builds only: the repo commits neither dir (see .gitignore), but a
+# staged vendor/ plus .cargo/config.toml must still reach the builder when
+# CARGO_OFFLINE=true.
+!vendor/**
+!.cargo/**

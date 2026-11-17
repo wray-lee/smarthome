@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "home"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "Smart home from the terminal: Google Home and Tuya backends behind one JSON contract."
@@ -35,3 +35,9 @@ tokio = { version = "1", features = ["rt", "macros", "net"] }
 wiremock = "0.6"
 tempfile = "3"
 rusqlite = { version = "0.40", features = ["bundled"] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+opt-level = "z"

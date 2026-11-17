@@ -339,9 +339,10 @@ async fn protecting_a_device_without_a_backend_is_exit_2() {
 #[tokio::test]
 async fn help_and_version_put_their_text_on_stderr_and_one_json_on_stdout() {
     let (_dir, db) = temp_db();
+    let version = concat!("home ", env!("CARGO_PKG_VERSION"));
     for (args, marker) in [
         (&["--help"][..], "Usage: home"),
-        (&["--version"][..], "home 0.1.0"),
+        (&["--version"][..], version),
         (&["gh", "--help"][..], "Usage: home gh"),
         (&["protect", "--help"][..], "Usage: home protect"),
     ] {
@@ -356,7 +357,7 @@ async fn help_and_version_put_their_text_on_stderr_and_one_json_on_stdout() {
             "{args:?}: the help text must reach stderr, got {stderr:?}"
         );
         assert!(
-            !stdout.contains("Usage:") && !stdout.contains("home 0.1.0"),
+            !stdout.contains("Usage:") && !stdout.contains("home 0.1.1"),
             "{args:?}: the help text must not reach stdout: {stdout:?}"
         );
     }

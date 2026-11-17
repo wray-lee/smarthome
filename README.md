@@ -67,8 +67,9 @@ serve the same panel and keep everything in one SQLite file.
 
 ### Binary
 
-The release build is a single dynamically linked Linux binary (glibc, as the
-build host provides). Copy it over, then give it a data directory and a
+The release build is a single statically linked Linux binary (musl), so it
+does not depend on the host's glibc version. Copy it to any common Linux
+distribution, or to Alpine, and run it as is. Give it a data directory and a
 password file only its user can read:
 
 ```console
@@ -331,8 +332,10 @@ is reached.
 
 ## Docker
 
-One image holds the `home` binary. The SQLite file lives on a mounted
-volume, never baked into the image, and the container runs as the
+One image holds the `home` binary. The runtime image is built on
+`alpine:3.21` and carries the statically linked musl binary, so the image is
+a fraction of the Debian/glibc build's size. The SQLite file lives on a
+mounted volume, never baked into the image, and the container runs as the
 non-root `home` user (UID 10001). Build both architectures with
 `docker buildx`:
 
@@ -347,19 +350,19 @@ build is possible.
 
 ### Load the shipped image
 
-Version 0.1.0 ships as `home-0.1.0-amd64.tar` and `home-0.1.0-arm64.tar`
+Version 0.1.1 ships as `home-0.1.1-amd64.tar` and `home-0.1.1-arm64.tar`
 (`docker save` output), alongside `sha256sums.txt`, `delivery.json` and the
 standalone binaries. Each tar holds one architecture only.
 
 ```console
-docker load -i home-0.1.0-amd64.tar   # on an arm64 host: home-0.1.0-arm64.tar
-docker image inspect home:0.1.0       # check Architecture before starting
+docker load -i home-0.1.1-amd64.tar   # on an arm64 host: home-0.1.1-arm64.tar
+docker image inspect home:0.1.1       # check Architecture before starting
 ```
 
 Loading the wrong tar leaves an image that fails to start with
 `exec format error`; pick the tar that matches `docker info` /
 `uname -m` on the host, and confirm with
-`docker image inspect home:0.1.0` (`Architecture` shows `amd64` or `arm64`).
+`docker image inspect home:0.1.1` (`Architecture` shows `amd64` or `arm64`).
 
 Create the volume and the password file, then start the panel on the
 loopback:
@@ -367,11 +370,11 @@ loopback:
 ```console
 docker volume create home-data
 printf '%s\n' 'a long password' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh home:0.1.0 -c 'umask 077; cat > /data/home-password'
+  --entrypoint sh home:0.1.1 -c 'umask 077; cat > /data/home-password'
 docker run -d --name home -p 127.0.0.1:8080:8080 \
   -v home-data:/data \
   -e HOME_PASSWORD_FILE=/data/home-password \
-  --restart unless-stopped home:0.1.0
+  --restart unless-stopped home:0.1.1
 ```
 
 The container runs as UID 10001, so the file lands on disk owned by 10001
