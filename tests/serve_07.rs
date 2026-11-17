@@ -916,3 +916,92 @@ fn the_backoff_grows_exponentially_after_each_failure() {
     let (status, _h, _b) = post_login(port, "pw123456");
     assert_eq!(status, 200);
 }
+
+// --- GET /settings: same page, same policy as / ---------------------------
+
+fn get_html(port: u16, target: &str, cookie: &str) -> (u16, String, String) {
+    let req = format!(
+        "GET {target} HTTP/1.1\r\nHost: x\r\nAccept: text/html\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n"
+    );
+    let (status, headers, body) = http_full(port, &req);
+    let ct = header(&headers, "content-type").unwrap_or("").to_string();
+    (status, ct, body)
+}
+
+/// Anonymous: HTML gets the login page, anything else gets the JSON 401.
+#[test]
+fn settings_is_the_login_page_for_anonymous_html_and_json_401_otherwise() {
+    let (_dir, db) = temp_db();
+    let port = free_port();
+    let _s = spawn_env(&db, port, &[]);
+
+    let (status, ct, body) = get_html(port, "/settings", "");
+    assert_eq!(status, 200, "{body}");
+    assert!(ct.contains("text/html"), "content-type {ct}");
+    assert!(body.contains("action=\"/login\""), "{body}");
+
+    let (status, ct, body) = http_get(port, "/settings");
+    assert_eq!(status, 401, "{body}");
+    assert!(ct.contains("application/json"), "content-type {ct}");
+    assert_eq!(body_json(&body)["error"]["code"], "unauthorized");
+}
+
+/// Signed in: /settings and / are byte-for-byte the same page, with the
+/// hardening headers on the new path too.
+#[test]
+fn settings_serves_the_same_page_as_root_with_security_headers() {
+    let (_dir, db) = temp_db();
+    let port = free_port();
+    let _s = spawn_env(&db, port, &[]);
+    let cookie = login_cookie(port);
+
+    let (status, _ct, root) = get_html(port, "/", &cookie);
+    assert_eq!(status, 200, "{root}");
+    let req = format!(
+        "GET /settings HTTP/1.1\r\nHost: x\r\nAccept: text/html\r\nCookie: {cookie}\r\nConnection: close\r\n\r\n"
+    );
+    let (status, headers, settings) = http_full(port, &req);
+    assert_eq!(status, 200, "{settings}");
+    assert_eq!(settings, root, "/settings body differs from /");
+    assert_eq!(
+        header(&headers, "content-type"),
+        Some("text/html; charset=utf-8")
+    );
+    assert_eq!(header(&headers, "x-content-type-options"), Some("nosniff"));
+    assert_eq!(header(&headers, "x-frame-options"), Some("DENY"));
+    assert_eq!(
+        header(&headers, "content-security-policy"),
+        Some("frame-ancestors 'none'; base-uri 'none'")
+    );
+    assert_eq!(header(&headers, "referrer-policy"), Some("no-referrer"));
+    assert_eq!(header(&headers, "cache-control"), Some("no-store"));
+}
+
+// --- login failure pages carry a machine-readable code --------------------
+
+/// The 401 page names the code, keeps the English text, and the 429 page
+/// names its own code.
+#[test]
+fn login_failures_render_a_localizable_error_code() {
+    let (_dir, db) = temp_db();
+    let port = free_port();
+    let _s = spawn_env(&db, port, &[]);
+
+    let (status, _h, body) = post_login(port, "wrong");
+    assert_eq!(status, 401, "{body}");
+    assert!(
+        body.contains("<p role=\"alert\" data-code=\"wrong_password\">Wrong password</p>"),
+        "{body}"
+    );
+
+    for _ in 0..2 {
+        assert_eq!(post_login(port, "wrong").0, 401);
+    }
+    let (status, headers, body) = post_login(port, "wrong");
+    assert_eq!(status, 429, "{body}");
+    assert!(header(&headers, "retry-after").is_some(), "Retry-After");
+    assert!(
+        body.contains("<p role=\"alert\" data-code=\"rate_limited\">Too many failed attempts"),
+        "{body}"
+    );
+}

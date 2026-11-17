@@ -931,11 +931,11 @@ fn handle(
     };
 
     // The login form and the login POST are the only unauthenticated paths.
-    // `GET /` is the same exception but only when Accept asks for HTML; every
-    // other request without a session is 401 JSON below.
+    // `GET /` and `GET /settings` are the same exception but only when Accept
+    // asks for HTML; every other request without a session is 401 JSON below.
     if !is_authenticated(state, headers) {
         let html_root = method == "GET"
-            && path == "/"
+            && matches!(path, "/" | "/settings")
             && headers
                 .get("accept")
                 .map(|a| a.contains("text/html"))
@@ -960,6 +960,7 @@ fn handle(
             match verify_password(state, given.as_bytes()) {
                 Err(wait) => {
                     let page = login_page_with_error(
+                        "rate_limited",
                         "Too many failed attempts. Wait before trying again.",
                     );
                     return http_reply(
@@ -971,7 +972,7 @@ fn handle(
                     );
                 }
                 Ok(false) => {
-                    let page = login_page_with_error("Wrong password");
+                    let page = login_page_with_error("wrong_password", "Wrong password");
                     return http_reply(stream, 401, "Unauthorized", &page, &[]);
                 }
                 Ok(true) => {}
@@ -1016,7 +1017,7 @@ fn handle(
                 )],
             );
         }
-        ("GET", "/") => {
+        ("GET", "/") | ("GET", "/settings") => {
             if !is_authenticated(state, headers) {
                 let page = login_page();
                 return http_reply(stream, 200, "OK", &page, &[]);
@@ -1526,10 +1527,12 @@ fn background_refresh(state: Arc<ServerState>) -> Result<(), ()> {
 }
 
 fn login_page() -> String {
-    login_page_with_error("")
+    login_page_with_error("", "")
 }
 
-fn login_page_with_error(error: &str) -> String {
+/// `code` is the stable, localizable token the page carries in `data-code`;
+/// `error` is the English fallback text shown when no translation applies.
+fn login_page_with_error(code: &str, error: &str) -> String {
     if error.is_empty() {
         LOGIN_HTML.to_string()
     } else {
@@ -1537,9 +1540,16 @@ fn login_page_with_error(error: &str) -> String {
             .replace('&', "&amp;")
             .replace('<', "&lt;")
             .replace('>', "&gt;");
+        let code = code
+            .replace('&', "&amp;")
+            .replace('"', "&quot;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;");
         LOGIN_HTML.replacen(
             "<div id=\"server-err\"></div>",
-            &format!("<div id=\"server-err\"><p role=\"alert\">{escaped}</p></div>"),
+            &format!(
+                "<div id=\"server-err\"><p role=\"alert\" data-code=\"{code}\">{escaped}</p></div>"
+            ),
             1,
         )
     }
