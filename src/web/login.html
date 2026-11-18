@@ -106,10 +106,12 @@ color-scheme:light dark;
 :root[data-theme="dark"]{color-scheme:dark}
 :root[data-theme="light"]{color-scheme:light}
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink)}
+/* The sign-in panel sits in the middle of the page it owns, not against the
+rail with the rest of the screen left blank. */
+body{margin:0;min-block-size:100dvb;display:grid;grid-template-rows:auto 1fr;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:1rem;line-height:1.5;background:var(--page);color:var(--page-ink)}
 header{padding:1rem;background:var(--rail);color:var(--rail-ink);border-block-end:1px solid var(--rail-ink2)}
 h1{margin:0;font-size:1.25rem;line-height:1.25;font-weight:700}
-main{max-inline-size:26rem;margin-inline:auto;padding:1.5rem 1.25rem}
+main{display:flex;flex-direction:column;justify-content:center;inline-size:100%;max-inline-size:26rem;margin-inline:auto;padding:1.5rem 1.25rem}
 /* The form is a panel bolted to the backplate: a real 1px frame, a petrol top
 edge, no shadow. */
 form{display:flex;flex-direction:column;gap:.375rem;background:var(--bay);border:1px solid var(--line);border-block-start:3px solid var(--accent);padding:1.25rem}

@@ -576,10 +576,14 @@ An empty state span must take no room. */
 /* The status strip is the front edge of the box, flush under the tabs. */
 .status{margin:0;padding:.5rem .75rem;background:var(--bay);border:1px solid var(--line);border-block-start:0;color:var(--page-ink2);font-size:.9375rem}
 #tab-guide{margin-block:.75rem}
-.banner{background:var(--bay);color:var(--ink);border:1px solid var(--line);border-inline-start:4px solid var(--err);padding:.75rem 1rem;margin:.75rem 0;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
+/* The guidance is a sentence, a command, a sentence, a command, then its
+actions. Stack them in that order instead of letting flex row items interleave
+the two commands on one line. */
+.banner{background:var(--bay);color:var(--ink);border:1px solid var(--line);border-inline-start:4px solid var(--err);padding:.75rem 1rem;margin:.75rem 0;display:block}
 .banner[hidden]{display:none}
-.banner .banner-text{flex:1 1 16rem;min-inline-size:0}
-.banner code{display:block;overflow-wrap:anywhere;margin-block:.25rem;padding:.5rem .75rem;background:var(--page);color:var(--page-ink);border:1px solid var(--line)}
+.banner .banner-text{display:block;min-inline-size:0}
+.banner code{display:block;overflow-wrap:anywhere;margin-block:.5rem;padding:.5rem .75rem;background:var(--page);color:var(--page-ink);border:1px solid var(--line)}
+.banner button{margin-block-start:.5rem;margin-inline-end:.5rem}
 /* The enclosure is the backplate: a 1px frame on the page tone, panels bolted
 onto it with their own 1px frame. No fill of its own, no shadow. */
 .enclosure{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;padding:.75rem;margin:0 0 1rem;background:transparent;border:1px solid var(--line)}
@@ -623,6 +627,10 @@ wraps on its own at 390 rather than a line of separators. */
 .note{margin:.125rem 0;font-size:.875rem;color:var(--ink2)}
 .ctrls{display:grid;grid-template-columns:minmax(0,1fr);gap:.5rem;margin-block-start:.375rem;min-inline-size:0}
 @media (min-width:64rem){.ctrls{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* A sentence or a Retry is not a field: it takes the whole row, and the
+button keeps its own width instead of stretching to a column. */
+.ctrls > .ro,.ctrls > button{grid-column:1 / -1}
+.ctrls > button{justify-self:start}
 .field{display:flex;flex-direction:column;gap:.125rem;min-inline-size:0}
 .field-head{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap}
 .field-head label{font-weight:600;font-size:.875rem}
@@ -663,7 +671,9 @@ thumb that sits low when off and high when on. */
 .rocker .paddle{position:relative;flex:none;inline-size:2rem;block-size:.6875rem;background:var(--switch-edge);border-radius:2px}
 .rocker .paddle::after{content:"";position:absolute;inset:2px;border-radius:1px;background:var(--switch-ink)}
 .rocker .pos{flex:none;font-size:.75rem;font-weight:600;line-height:1.4;letter-spacing:0}
-.rocker.offline{background:transparent;color:var(--ink);border:1px dashed var(--line);justify-content:center;cursor:not-allowed;font-size:.75rem}
+/* The key only prints one word: let it take the width that word needs, so a
+longer translation is not broken inside the dashed plate. */
+.rocker.offline{background:transparent;color:var(--ink);border:1px dashed var(--line);justify-content:center;cursor:not-allowed;font-size:.75rem;inline-size:auto;min-inline-size:3.75rem;white-space:nowrap}
 .action{min-inline-size:3.75rem;min-block-size:4.75rem;padding:.5rem .625rem;background:var(--switch);color:var(--switch-ink);border:1px solid var(--switch-edge);border-radius:3px}
 .action:hover{border-color:var(--accent)}
 @media (prefers-reduced-motion:no-preference){
