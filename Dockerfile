@@ -32,6 +32,9 @@ FROM alpine:3.21
 RUN addgroup -S home \
  && adduser -S -G home -u 10001 -h /data home
 COPY --from=builder /artifact/home /usr/local/bin/home
+# The runtime image carries the project license and the third-party notices.
+RUN mkdir -p /usr/share/licenses/home
+COPY --chmod=0644 LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/home/
 
 # SQLite lives on a mounted volume, never baked into the image.
 # `adduser -h /data` already creates /data owned by home:home.

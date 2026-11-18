@@ -3,6 +3,7 @@ name = "ghome-backend"
 version = "0.3.0"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/wray-lee/smarthome"
 description = "Google Home backend: gpsoauth credential chain and the foyer JSON gateway."
 
 [dependencies]

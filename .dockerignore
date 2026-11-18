@@ -5,6 +5,9 @@
 !Cargo.lock
 !crates/**
 !src/**
+# The runtime image carries these two files under /usr/share/licenses/home.
+!LICENSE
+!THIRD_PARTY_NOTICES.md
 # Offline builds only: the repo commits neither dir (see .gitignore), but a
 # staged vendor/ plus .cargo/config.toml must still reach the builder when
 # CARGO_OFFLINE=true.

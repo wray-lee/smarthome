@@ -225,6 +225,23 @@ else
   bad "7. docker save failed: $(trim "$(cat "$TMPDIR_SMOKE/save.err")")"
 fi
 
+# ---- 8. runtime image carries LICENSE and THIRD_PARTY_NOTICES.md ---------
+# Both files must sit at the path the Dockerfile copies them to and match the
+# checked-out file byte for byte. A missing or stale copy fails the smoke.
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+for f in LICENSE THIRD_PARTY_NOTICES.md; do
+  if dk --entrypoint cat "$IMAGE" "/usr/share/licenses/home/$f" \
+       >"$TMPDIR_SMOKE/$f" 2>"$TMPDIR_SMOKE/$f.err"; then
+    if cmp -s "$REPO_ROOT/$f" "$TMPDIR_SMOKE/$f"; then
+      ok "8. /usr/share/licenses/home/$f matches $f"
+    else
+      bad "8. /usr/share/licenses/home/$f differs from $f"
+    fi
+  else
+    bad "8. /usr/share/licenses/home/$f is missing from the image: $(trim "$(cat "$TMPDIR_SMOKE/$f.err")")"
+  fi
+done
+
 echo
 echo "image-smoke: $PASS_COUNT passed, $FAIL_COUNT failed"
 if [ "$FAIL_COUNT" -eq 0 ]; then

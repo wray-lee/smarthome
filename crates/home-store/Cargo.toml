@@ -3,6 +3,7 @@ name = "home-store"
 version = "0.3.0"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/wray-lee/smarthome"
 description = "Shared SQLite storage, JSON output and exit-code contract."
 
 [dependencies]
