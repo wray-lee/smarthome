@@ -362,8 +362,9 @@ The choices are kept in this browser's `localStorage`
 and an unsaved change is dropped when you leave the view. Nothing about
 these choices is stored on the server.
 
-Each Device row reads its state and Telemetry on a 10 s poll, which pauses
-while the browser tab is hidden and catches up when it returns. A read never
+Each Device row reads its state and Telemetry on a 10 s poll. The poll pauses
+while the browser tab is hidden, refreshes once as soon as the tab is visible
+again, and never runs two reads at the same time. A read never
 blanks the row: the last reading stays while the next one is on the way, and
 a failed read that already had values keeps them and marks them `Updated
 HH:MM, may be out of date` until a read succeeds.

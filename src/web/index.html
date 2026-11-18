@@ -1932,14 +1932,14 @@ function markBackend(backend,key){
 
 // --- polling -------------------------------------------------------------
 var pollTimer=null;
-var lastDone=0;
 var loading=false;
 function schedule(delay){
   if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}
   if(!isVisible())return;
   pollTimer=setTimeout(function(){
     pollTimer=null;
-    if(isVisible())load();
+    // One read at a time: a slow read keeps its slot; load() schedules the next.
+    if(isVisible()&&!loading)load();
   },delay);
 }
 document.addEventListener("visibilitychange",function(){
@@ -1947,9 +1947,10 @@ document.addEventListener("visibilitychange",function(){
     if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}
     return;
   }
-  var elapsed=Date.now()-lastDone;
-  if(elapsed>=POLL_MS)schedule(0);
-  else schedule(POLL_MS-elapsed);
+  // A visible tab catches up at once and silently, unless a read is already
+  // in flight; that read schedules the next slot when it lands.
+  if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}
+  if(!loading)load();
 });
 function load(showLoading){
   if(loading)return Promise.resolve();
@@ -1964,7 +1965,7 @@ function load(showLoading){
     var rJ=pair[0];var sJ=pair[1];
     if(rJ[0].status===401||sJ[0].status===401){location.href="/login";loading=false;return;}
     var j=rJ[1];var sj=sJ[1];
-    if(j&&j.error){showError(errText(j));loading=false;lastDone=Date.now();schedule(POLL_MS);return;}
+    if(j&&j.error){showError(errText(j));loading=false;schedule(POLL_MS);return;}
     var data=j.data||{};
     var statusData=sj&&sj.data?sj.data:null;
     if(statusData&&typeof statusData.tuya_user_code_configured!=="undefined")tuyaUserCodeConfigured=!!statusData.tuya_user_code_configured;
@@ -1990,10 +1991,10 @@ function load(showLoading){
     setTabCount("all",tabRows.length);
     setTabState("all",null);
     renderView();
-    loading=false;lastDone=Date.now();schedule(POLL_MS);
+    loading=false;schedule(POLL_MS);
   }).catch(function(e){
     showError(e.message);
-    loading=false;lastDone=Date.now();schedule(POLL_MS);
+    loading=false;schedule(POLL_MS);
   });
 }
 // --- routing -------------------------------------------------------------
