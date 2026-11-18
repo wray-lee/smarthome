@@ -1348,7 +1348,8 @@ function tuyaSetPost(dev,onVal){
 
 function fetchState(dev){
   var my=++dev._seq;
-  dev._stateEl.textContent=t("state.loading");
+  // The last state stays on screen until the new reading lands; a new row
+  // already says "Loading state..." from renderRows.
   if(dev._teleEl)renderTelemetry(dev,"loading",null);
   var path=dev.backend==="google_home"?("/api/gh/get?device="+encodeURIComponent(dev.id)):("/api/tuya/get?device="+encodeURIComponent(dev.id));
   fetch(path,{headers:{"Accept":"application/json"}}).then(function(r){
@@ -1364,7 +1365,7 @@ function fetchState(dev){
       var msg=errText(j);
       var off=errCode(j)==="device_offline"||msg.toLowerCase().indexOf("offline")!==-1;
       if(off)markBackend(dev.backend,"offline");
-      dev._stateEl.textContent=off?t("state.offline"):tf("state.raw",{value:msg});
+      setText(dev._stateEl,off?t("state.offline"):tf("state.raw",{value:msg}));
       // A failed read is not an offline Device: a transient 500 must keep the
       // switch and its last state instead of turning the row offline.
       if(off)dev._online=false;
@@ -1381,7 +1382,7 @@ function fetchState(dev){
     }else{
       if(typeof data.online==="boolean")dev._online=data.online;
     }
-    dev._stateEl.textContent=stateSummary(dev,data);
+    setText(dev._stateEl,stateSummary(dev,data));
     buildControl(dev,data);
     if(dev._teleEl)renderTelemetry(dev,"data",data.telemetry);
   }).catch(function(e){

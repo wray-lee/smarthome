@@ -733,6 +733,17 @@ fn index_smoke_landmarks_and_controls() {
         body.contains("cover.className=\"cover\"") && body.contains("g.className=\"guard\""),
         "protected cover markup missing"
     );
+    // A poll keeps the last state text until the new reading lands: only a
+    // freshly built row says "Loading state...", and an unchanged value is not
+    // rewritten, so the row text never flickers between polls.
+    assert!(
+        !body.contains("dev._stateEl.textContent=t(\"state.loading\")"),
+        "fetchState must not blank the state text on every poll"
+    );
+    assert!(
+        body.contains("setText(dev._stateEl,stateSummary(dev,data))"),
+        "state text must update in place only when it changes"
+    );
     // The list heading is visually hidden so it does not float under the status.
     assert!(
         body.contains("id=\"list-heading\" class=\"visually-hidden\""),
