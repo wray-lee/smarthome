@@ -1,6 +1,6 @@
 [package]
 name = "ghome-backend"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 description = "Google Home backend: gpsoauth credential chain and the foyer JSON gateway."

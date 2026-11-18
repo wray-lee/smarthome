@@ -428,19 +428,19 @@ build is possible.
 
 ### Load the shipped image
 
-Version 0.2.1 ships as `home-0.2.1-amd64.tar` and `home-0.2.1-arm64.tar`
+Version 0.3.0 ships as `home-0.3.0-amd64.tar` and `home-0.3.0-arm64.tar`
 (`docker save` output), alongside `sha256sums.txt`, `delivery.json` and the
 standalone binaries. Each tar holds one architecture only.
 
 ```console
-docker load -i home-0.2.1-amd64.tar   # on an arm64 host: home-0.2.1-arm64.tar
-docker image inspect home:0.2.1       # check Architecture before starting
+docker load -i home-0.3.0-amd64.tar   # on an arm64 host: home-0.3.0-arm64.tar
+docker image inspect home:0.3.0       # check Architecture before starting
 ```
 
 Loading the wrong tar leaves an image that fails to start with
 `exec format error`; pick the tar that matches `docker info` /
 `uname -m` on the host, and confirm with
-`docker image inspect home:0.2.1` (`Architecture` shows `amd64` or `arm64`).
+`docker image inspect home:0.3.0` (`Architecture` shows `amd64` or `arm64`).
 
 Create the volume and the password file, then start the panel on the
 loopback:
@@ -448,11 +448,11 @@ loopback:
 ```console
 docker volume create home-data
 printf '%s\n' 'a long password' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh home:0.2.1 -c 'umask 077; cat > /data/home-password'
+  --entrypoint sh home:0.3.0 -c 'umask 077; cat > /data/home-password'
 docker run -d --name home -p 127.0.0.1:8080:8080 \
   -v home-data:/data \
   -e HOME_PASSWORD_FILE=/data/home-password \
-  --restart unless-stopped home:0.2.1
+  --restart unless-stopped home:0.3.0
 ```
 
 The container runs as UID 10001, so the file lands on disk owned by 10001
@@ -471,7 +471,7 @@ because `docker inspect` shows the environment):
 docker exec -it home home gh login --email you@example.com
 docker exec -e HOME_GH_TOKEN='oauth2_4/…' home home gh login --email you@example.com
 printf '%s\n' 'aas_et/…' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh home:0.2.1 -c 'umask 077; cat > /data/gh-token'
+  --entrypoint sh home:0.3.0 -c 'umask 077; cat > /data/gh-token'
 docker exec home home gh login --email you@example.com --token-file /data/gh-token
 docker exec -it -e HOME_TUYA_USER_CODE=… home home tuya login
 ```
