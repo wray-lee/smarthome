@@ -315,7 +315,8 @@ default 10000 ms, minimum 20).
 to start without a password (`HOME_PASSWORD`, `--password`, or
 `HOME_PASSWORD_FILE`/`--password-file`, preferred for Docker because argv is
 visible to other processes; the file's trailing newline is trimmed). It
-serves the panel at `/`, the login form at
+serves the panel at `/` and `/settings` (the same page, one view or the
+other), the login form at
 `/login` (POST sets an `HttpOnly; SameSite=Strict` `home_session` cookie; add
 `--secure-cookie` or set `HOME_COOKIE_SECURE` when the panel sits behind an
 HTTPS reverse proxy so the cookie carries `Secure`), and a JSON API under
@@ -325,6 +326,47 @@ side by side, so one dead Backend does not hide the other; `GET /api/health`
 and `GET /api/status` report panel health. A background ticker refreshes the
 Tuya token before expiry and persists the rotated refresh token first, so the
 session stays alive without waiting for a request.
+
+Signed in, the panel is one page with two views. The header carries Devices
+and Settings links plus Refresh and Sign out. The links are real routes, so a
+new tab or a direct visit to `/settings` works; inside the page they switch
+without a reload, and Back and Forward move between the two views. Settings
+sets the address to `/settings` and the page title follows the view. Signed
+out, `GET /settings` answers with the login form exactly like `GET /`, and
+signing out returns there.
+
+The Devices view shows both Backends at once, filtered by three tabs: All,
+Google Home and Tuya. Each tab carries that Backend's Device count from the
+latest answer, and a word when the Backend cannot be used right now: `sign
+in needed`, `offline` or `error`. A Backend with no stored credential
+explains the next step inside its own tab: Tuya offers the QR sign-in button,
+Google Home shows the `home gh login --email <your-email>` command with a
+Refresh button. A poll or a Refresh never moves the selected tab. The tab
+selected when the view opens is the one set in Settings, `All` until you
+change it.
+
+Settings holds three choices that stay in this browser, applied with one Save
+button:
+
+- Language: Auto, English, Chinese (Simplified) or Japanese. Auto takes the
+  first `zh`, `ja` or `en` entry of the browser's language list and falls
+  back to English. A chosen language also applies to the login form, and the
+  page `lang` attribute follows it so screen readers and spell check agree.
+- Default tab: which Devices tab is selected when the view opens. It does
+  not change the tab you are looking at until the next visit.
+- Appearance: Auto follows the system colour scheme; Light and Dark pin it.
+  The login form follows the same choice.
+
+The choices are kept in this browser's `localStorage`
+(`home_panel_settings`), so two machines can show the same panel differently,
+and an unsaved change is dropped when you leave the view. Nothing about
+these choices is stored on the server.
+
+Each Device row reads its state and Telemetry on a 10 s poll, which pauses
+while the browser tab is hidden and catches up when it returns. A read never
+blanks the row: the last reading stays while the next one is on the way, and
+a failed read that already had values keeps them and marks them `Updated
+HH:MM, may be out of date` until a read succeeds.
 
 Login failures share one failed-password throttle with the protected-device
 override. From the third failure a single counter backs off exponentially
