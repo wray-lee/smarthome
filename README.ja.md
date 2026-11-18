@@ -11,7 +11,7 @@ Google Home と Tuya のデバイスを、1 つの Rust バイナリと Web パ�
 
 [English](README.md) | [简体中文](README.zh-CN.md) | 日本語
 
-[クイックスタート](#quick-start)|[主な機能](#features)|[CLI](#cli)|[マニュアル](#manual)|[安全](#safety)
+[クイックスタート](#quick-start) | [主な機能](#features) | [CLI](#cli) | [マニュアル](#manual) | [安全](#safety)
 
 </div>
 

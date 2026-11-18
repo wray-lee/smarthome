@@ -30,6 +30,11 @@ link_targets() {
   prose "$1" | grep -oE '\]\([^)]*\)' | sed -e 's/^](//' -e 's/)$//' -e 's/[[:space:]].*$//'
 }
 
+# Every HTML <img src="..."> path in prose, one per line.
+img_targets() {
+  prose "$1" | grep -oE '<img[^>]* src="[^"]*"' | sed -e 's/.* src="//' -e 's/"$//'
+}
+
 # 1. The six files exist. Missing ones are reported one by one; the rest of
 # the checks need them, so stop here.
 MISSING=0
@@ -117,6 +122,10 @@ for f in "${ALL_FILES[@]}"; do
       fi
     fi
   done < <(link_targets "$f")
+  while IFS= read -r t; do
+    case "$t" in http://*|https://*) continue ;; esac
+    [ -e "$(dirname "$f")/$t" ] || LINK_ERRORS="$LINK_ERRORS $f: missing img $t;"
+  done < <(img_targets "$f")
 done
 if [ -z "$LINK_ERRORS" ]; then
   ok "4. relative links and images resolve, fragments have anchors"

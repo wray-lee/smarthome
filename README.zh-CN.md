@@ -4,8 +4,7 @@
 
 # home
 
-Google Home 与 Tuya 设备，由一个静态链接（musl）的 Rust 二进制程序和一个网页面板
-统一管理。每条命令都向 stdout 输出一份 JSON 文档，退出码说明执行结果。
+Google Home 与 Tuya 设备，由一个 Rust 二进制程序和一个网页面板统一管理。每条命令都向 stdout 输出一份 JSON 文档，退出码说明执行结果。
 
 [![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.0](https://img.shields.io/badge/GHCR-0.3.0-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
 
