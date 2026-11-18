@@ -151,12 +151,18 @@ fn temp_db() -> (tempfile::TempDir, PathBuf) {
     (dir, db)
 }
 
+/// A port below the OS ephemeral range (Linux starts at 32768), handed out once
+/// per test binary. `bind(0)` then drop let a parallel test's wiremock grab the
+/// same port before `home serve` bound it, so the probe hit the wrong server.
 fn free_port() -> u16 {
-    TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
+    static NEXT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(0);
+    let base = 20_000 + (std::process::id() % 400) as u16 * 25;
+    loop {
+        let port = base + NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        if TcpListener::bind(("127.0.0.1", port)).is_ok() {
+            return port;
+        }
+    }
 }
 
 fn envelope(body: Value) -> ResponseTemplate {
