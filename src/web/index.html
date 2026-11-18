@@ -1311,7 +1311,9 @@ function fetchState(dev){
       var off=errCode(j)==="device_offline"||msg.toLowerCase().indexOf("offline")!==-1;
       if(off)markBackend(dev.backend,"offline");
       dev._stateEl.textContent=off?t("state.offline"):tf("state.raw",{value:msg});
-      dev._online=false;
+      // A failed read is not an offline Device: a transient 500 must keep the
+      // switch and its last state instead of turning the row offline.
+      if(off)dev._online=false;
       buildControl(dev,null,j);
       if(dev._teleEl)renderTelemetry(dev,"error",off?"offline":msg);
       return;

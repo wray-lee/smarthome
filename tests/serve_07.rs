@@ -682,6 +682,9 @@ fn index_smoke_landmarks_and_controls() {
         "t(\"syncing\")",
         "t(\"telemetry\")",
         "t(\"banner.tuyaSignIn\")",
+        // A failed state read is not an offline Device: only a real offline
+        // refusal clears the online flag, so a transient 500 keeps the switch.
+        "if(off)dev._online=false;",
         "data-i18n=\"qr.userCodeLabel\"",
         "\"Loading devices...\"",
         "\"No devices found. Check that both backends are logged in.\"",
