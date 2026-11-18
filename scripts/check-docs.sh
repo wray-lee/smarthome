@@ -142,18 +142,20 @@ else
   bad "5. forbidden characters:$CHAR_HITS"
 fi
 
-# 6. README length: 120 to 180 lines inclusive.
+# 6. README length: 120 to 200 lines inclusive. The homepage layout measures
+# 175/166/180, so the ceiling keeps about 20 lines of headroom over the
+# longest, the same margin the previous layout had under the 180 limit.
 LEN_ERRORS=
 for f in "${README_FILES[@]}"; do
   n=$(wc -l < "$f" | tr -d ' ')
-  if [ "$n" -lt 120 ] || [ "$n" -gt 180 ]; then
+  if [ "$n" -lt 120 ] || [ "$n" -gt 200 ]; then
     LEN_ERRORS="$LEN_ERRORS $f: $n lines;"
   fi
 done
 if [ -z "$LEN_ERRORS" ]; then
-  ok "6. each README is 120 to 180 lines"
+  ok "6. each README is 120 to 200 lines"
 else
-  bad "6. README length outside 120..180:$LEN_ERRORS"
+  bad "6. README length outside 120..200:$LEN_ERRORS"
 fi
 
 # 7. Language switchers and each README's link to its own manual.
