@@ -113,6 +113,33 @@ fn every_value_is_present_and_free_of_em_dash() {
     }
 }
 
+/// Simplified Chinese uses Chinese quotation marks, not the Japanese corner
+/// brackets, and the English copy uses US spelling to match "Color temperature".
+#[test]
+fn chinese_copy_uses_chinese_quotes_and_english_uses_us_spelling() {
+    let d = dicts(PANEL);
+    let zh = &d["zh-CN"];
+    let corner: Vec<&String> = zh
+        .iter()
+        .filter(|(_, v)| v.contains('「') || v.contains('」'))
+        .map(|(k, _)| k)
+        .collect();
+    assert!(
+        corner.is_empty(),
+        "zh-CN carries Japanese corner brackets: {corner:?}"
+    );
+    let en = &d["en"];
+    let british: Vec<&String> = en
+        .iter()
+        .filter(|(_, v)| v.contains("colour"))
+        .map(|(k, _)| k)
+        .collect();
+    assert!(
+        british.is_empty(),
+        "en carries the British spelling colour: {british:?}"
+    );
+}
+
 #[test]
 fn the_markup_defaults_to_english_and_selects_from_the_browser() {
     assert!(

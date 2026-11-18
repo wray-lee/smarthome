@@ -30,7 +30,7 @@ var I18N={
 "settings.tab.note":"Applies the next time you open Devices.",
 "settings.theme.heading":"Appearance",
 "settings.theme.label":"Theme",
-"settings.theme.note":"Auto follows this device's colour preference.",
+"settings.theme.note":"Auto follows this device's color preference.",
 "settings.theme.auto":"Auto (system)",
 "settings.theme.light":"Light",
 "settings.theme.dark":"Dark",
@@ -166,7 +166,7 @@ var I18N={
 "settings.lead":"这些设置只保存在当前浏览器中。",
 "settings.lang.heading":"语言",
 "settings.lang.label":"面板语言",
-"settings.lang.note":"「自动」跟随浏览器设置。",
+"settings.lang.note":"“自动”跟随浏览器设置。",
 "settings.lang.auto":"自动（浏览器）",
 "settings.lang.en":"英语",
 "settings.lang.zh":"简体中文",
@@ -176,7 +176,7 @@ var I18N={
 "settings.tab.note":"下次进入设备页时生效。",
 "settings.theme.heading":"外观",
 "settings.theme.label":"主题",
-"settings.theme.note":"「自动」跟随此设备的配色偏好。",
+"settings.theme.note":"“自动”跟随此设备的配色偏好。",
 "settings.theme.auto":"自动（系统）",
 "settings.theme.light":"浅色",
 "settings.theme.dark":"深色",
@@ -201,7 +201,7 @@ var I18N={
 "qr.empty":"尚未生成二维码。",
 "qr.hintConfigured":"服务器已配置用户代码，此字段可以留空。如需填写，请在 Smart Life App 中依次打开 我、设置、账号与安全、用户代码。",
 "qr.hintOptional":"可选。服务器已配置用户代码时可留空。如需查找，请在 Smart Life App 中依次打开 我、设置、账号与安全、用户代码。",
-"qr.status.enterCode":"需要时请填写代码，然后点击「生成二维码」。",
+"qr.status.enterCode":"需要时请填写代码，然后点击“生成二维码”。",
 "qr.status.loading":"正在加载，正在生成二维码…",
 "qr.status.scan":"请用 Smart Life App 扫描二维码，正在等待扫码…",
 "qr.status.pending":"等待扫码…（等待中）",
@@ -557,15 +557,18 @@ The current one is marked by a word-level shape, not colour alone. */
 #h1-settings{margin:.5rem 0 0;font-size:1.375rem;line-height:1.25;font-weight:700;text-wrap:balance;color:var(--page-ink)}
 #h1-devices:focus-visible,#h1-settings:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 header #h1-devices:focus-visible{outline-color:var(--focus-rail)}
-.settings-form{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;margin-block-start:.75rem}
-@media (min-width:64rem){.settings-form{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.settings-group{background:var(--bay);border:1px solid var(--line);border-block-start:2px solid var(--accent);min-inline-size:0}
-.settings-group .bay-head{padding-block-end:.5rem;border-block-end:1px solid var(--rule)}
-.settings-group .bay-head h2{margin:0;font-size:1.0625rem;line-height:1.3;font-weight:700;text-wrap:balance}
-.settings-body{display:flex;flex-direction:column;gap:.375rem;padding:.75rem}
-.settings-body label{font-weight:600}
-.settings-body select{max-inline-size:100%}
-.settings-actions{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;grid-column:1 / -1}
+#view-settings{max-inline-size:47.5rem;margin-inline:auto}
+.settings-form{display:block;margin-block-start:1rem;background:var(--bay);border:1px solid var(--line);border-block-start:3px solid var(--accent)}
+/* One group per row: title and description left, the control right. */
+.settings-group{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;padding:1rem;border-block-start:1px solid var(--rule);min-inline-size:0}
+.settings-group:first-child{border-block-start:0}
+@media (min-width:48rem){.settings-group{grid-template-columns:minmax(0,1fr) minmax(12rem,20rem);gap:1.5rem;align-items:center}}
+.settings-copy h2{margin:0;font-size:1rem;line-height:1.3;font-weight:700;text-wrap:balance}
+.settings-copy .note{margin:.125rem 0 0}
+.settings-field{display:flex;flex-direction:column;gap:.375rem;min-inline-size:0}
+.settings-field label{font-size:.875rem;font-weight:600}
+.settings-field select{max-inline-size:100%}
+.settings-actions{display:flex;align-items:center;justify-content:flex-end;gap:.75rem;flex-wrap:wrap;padding:.75rem 1rem;border-block-start:1px solid var(--rule)}
 #settings-saved{margin:0;font-weight:600;color:var(--ink2)}
 /* A control is a raised plate: a 1px frame plus a darker bottom edge, so it
 reads as a real button without a shadow. */
@@ -583,15 +586,15 @@ main{padding-block-start:.5rem}
 Each tab is at least 44px tall; the selected one carries a shape (an underline
 drawn with a border on a pseudo-element) as well as colour. */
 .tabbar{display:flex;overflow-x:auto;margin-block-start:.75rem;border-block-end:1px solid var(--line)}
-[role="tab"]{position:relative;display:flex;flex:none;flex-wrap:wrap;justify-content:center;align-items:center;min-block-size:2.75rem;padding:.5rem .875rem;border:0;border-block-start:3px solid transparent;background:transparent;color:var(--page-ink2);font-weight:600;white-space:nowrap}
+[role="tab"]{position:relative;display:inline-flex;flex:none;flex-wrap:nowrap;justify-content:center;align-items:center;min-block-size:2.75rem;padding:.5rem .875rem;border:0;border-block-start:3px solid transparent;background:transparent;color:var(--page-ink2);font-weight:600;white-space:nowrap}
 [role="tab"]:hover{color:var(--ink)}
 [role="tab"][aria-selected="true"]{color:var(--ink);background:var(--bay);border-block-start-color:var(--accent)}
 [role="tab"][aria-selected="true"]::after{content:"";position:absolute;inset:auto 0 0;border-block-end:1px solid var(--accent)}
 [role="tab"] .tab-count{margin-inline-start:.375rem;font-weight:400;font-variant-numeric:tabular-nums;color:var(--muted)}
 [role="tab"][aria-selected="true"] .tab-count{color:var(--ink2)}
-[role="tab"] .tab-state{flex-basis:100%;text-align:center;font-size:.8125rem;font-weight:400;color:var(--muted)}
-/* The label and count are inline; a state line, when present, sits under them.
-An empty state span must take no room. */
+/* The state is a small text chip after the count, on the same line, so every
+tab keeps one height and one baseline. An empty state span takes no room. */
+[role="tab"] .tab-state{margin-inline-start:.375rem;padding:.0625rem .3125rem;border:1px solid var(--line);font-size:.75rem;line-height:1.3;font-weight:600;color:var(--ink2)}
 [role="tab"] .tab-state[hidden]{display:none}
 #tab-panel:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 /* The status strip is the front edge of the box, flush under the tabs. */
@@ -607,7 +610,7 @@ the two commands on one line. */
 .banner button{margin-block-start:.5rem;margin-inline-end:.5rem}
 /* The enclosure is the backplate: a 1px frame on the page tone, panels bolted
 onto it with their own 1px frame. No fill of its own, no shadow. */
-.enclosure{display:grid;grid-template-columns:minmax(0,1fr);gap:.75rem;padding:.75rem;margin:0 0 1rem;background:transparent;border:1px solid var(--line)}
+.enclosure{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:.75rem;padding:.75rem;margin:0 0 1rem;background:transparent;border:1px solid var(--line)}
 @media (min-width:64rem){.enclosure{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bay{display:flex;flex-direction:column;background:var(--bay);border:1px solid var(--line);min-inline-size:0}
 .bay-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;padding:.5rem .75rem;background:var(--bay);border-block-end:1px solid var(--line)}
@@ -633,7 +636,7 @@ li.device:first-child{border-block-start:0}
 /* A stable box for a value that changes every poll: digits keep one advance
 width, and the box holds the widest reading it has shown, so 155 and 812 (and
 a four digit load) do not nudge the unit or the row. */
-.watts{display:inline-block;min-inline-size:4ch;font-size:clamp(1.75rem,1.2rem + 1.8vw,2.5rem);line-height:1.3;font-weight:600;font-variant-numeric:tabular-nums}
+.watts{display:inline-block;min-inline-size:4ch;text-align:end;font-size:clamp(1.75rem,1.2rem + 1.8vw,2.5rem);line-height:1.3;font-weight:600;font-variant-numeric:tabular-nums}
 .unit{font-size:.9375rem;font-weight:600;color:var(--ink2)}
 .tele{margin-block-start:.375rem;min-inline-size:0}
 .tele h3{margin:0 0 .125rem;font-size:.8125rem;font-weight:600;color:var(--ink2)}
@@ -654,7 +657,7 @@ button keeps its own width instead of stretching to a column. */
 .ctrls > button{justify-self:start}
 .field{display:flex;flex-direction:column;gap:.125rem;min-inline-size:0}
 .field-head{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem;flex-wrap:wrap}
-.field-head label{font-weight:600;font-size:.875rem}
+.field-head label,.field>label,#pw-form label{font-weight:600;font-size:.875rem}
 .val{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
 .ctrl-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;grid-column:1 / -1;min-inline-size:0}
 .ctrl-row .field{flex:1 1 8rem;min-inline-size:0}
@@ -706,6 +709,8 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain;background:rgb(0 0 
 dialog h2{margin:0 0 .5rem;font-size:1.125rem;line-height:1.3}
 dialog p{margin:.25rem 0}
 dialog .actions{display:flex;gap:.75rem;justify-content:flex-end;margin-block-start:1.25rem;flex-wrap:wrap}
+/* The password label sits above its input with the same gap as every field. */
+#pw-form{display:flex;flex-direction:column;gap:.375rem}
 /* A flex container ignores the UA [hidden] rule, so say it here. */
 dialog .actions[hidden]{display:none}
 dialog .danger-note{color:var(--err);font-weight:600}
@@ -750,10 +755,12 @@ dialog .danger-note{color:var(--err);font-weight:600}
 <p class="note" data-i18n="settings.lead">These settings stay in this browser.</p>
 <form id="settings-form" class="settings-form">
 <section class="settings-group" aria-labelledby="set-lang-h">
-<div class="bay-head"><h2 id="set-lang-h" data-i18n="settings.lang.heading">Language</h2></div>
-<div class="settings-body">
-<label for="set-lang" data-i18n="settings.lang.label">Panel language</label>
+<div class="settings-copy">
+<h2 id="set-lang-h" data-i18n="settings.lang.heading">Language</h2>
 <p class="note" data-i18n="settings.lang.note">Auto follows this browser.</p>
+</div>
+<div class="settings-field">
+<label for="set-lang" data-i18n="settings.lang.label">Panel language</label>
 <select id="set-lang" name="lang">
 <option value="auto" data-i18n="settings.lang.auto">Auto (browser)</option>
 <option value="en" data-i18n="settings.lang.en">English</option>
@@ -763,10 +770,12 @@ dialog .danger-note{color:var(--err);font-weight:600}
 </div>
 </section>
 <section class="settings-group" aria-labelledby="set-tab-h">
-<div class="bay-head"><h2 id="set-tab-h" data-i18n="settings.tab.heading">Default tab</h2></div>
-<div class="settings-body">
-<label for="set-tab" data-i18n="settings.tab.label">First tab on the Devices page</label>
+<div class="settings-copy">
+<h2 id="set-tab-h" data-i18n="settings.tab.heading">Default tab</h2>
 <p class="note" data-i18n="settings.tab.note">Applies the next time you open Devices.</p>
+</div>
+<div class="settings-field">
+<label for="set-tab" data-i18n="settings.tab.label">First tab on the Devices page</label>
 <select id="set-tab" name="defaultTab">
 <option value="all" data-i18n="tab.all">All</option>
 <option value="google_home" data-i18n="tab.google_home">Google Home</option>
@@ -775,10 +784,12 @@ dialog .danger-note{color:var(--err);font-weight:600}
 </div>
 </section>
 <section class="settings-group" aria-labelledby="set-theme-h">
-<div class="bay-head"><h2 id="set-theme-h" data-i18n="settings.theme.heading">Appearance</h2></div>
-<div class="settings-body">
+<div class="settings-copy">
+<h2 id="set-theme-h" data-i18n="settings.theme.heading">Appearance</h2>
+<p class="note" data-i18n="settings.theme.note">Auto follows this device's color preference.</p>
+</div>
+<div class="settings-field">
 <label for="set-theme" data-i18n="settings.theme.label">Theme</label>
-<p class="note" data-i18n="settings.theme.note">Auto follows this device's colour preference.</p>
 <select id="set-theme" name="theme">
 <option value="auto" data-i18n="settings.theme.auto">Auto (system)</option>
 <option value="light" data-i18n="settings.theme.light">Light</option>
@@ -787,8 +798,8 @@ dialog .danger-note{color:var(--err);font-weight:600}
 </div>
 </section>
 <div class="settings-actions">
-<button type="submit" class="primary" data-i18n="settings.save">Save</button>
 <p id="settings-saved" role="status" aria-live="polite"></p>
+<button type="submit" class="primary" data-i18n="settings.save">Save</button>
 </div>
 </form>
 </div>
@@ -1155,10 +1166,14 @@ function renderRows(rows,rebuild){
     head.className="bay-head";
     var h=document.createElement("h3");
     h.textContent=group.name;
-    var b=document.createElement("span");
-    b.className="backend";
-    b.textContent=group.backend;
-    head.appendChild(h);head.appendChild(b);
+    head.appendChild(h);
+    // On a single backend's own tab every room would repeat the same chip.
+    if(tabSel==="all"){
+      var b=document.createElement("span");
+      b.className="backend";
+      b.textContent=group.backend;
+      head.appendChild(b);
+    }
     bay.appendChild(head);
     var ul=document.createElement("ul");
     ul.className="breakers";
@@ -1851,7 +1866,7 @@ function setTabCount(id,count){
 function setTabState(id,key){
   var el=tabEl(id).querySelector(".tab-state");
   if(!key){el.textContent="";el.hidden=true;return;}
-  el.textContent=t(key);
+  el.textContent=" "+t(key);
   el.hidden=false;
 }
 function showGuide(id){
@@ -2016,6 +2031,8 @@ function showView(view,focus){
     if(k===view)NAVS[k].setAttribute("aria-current","page");
     else NAVS[k].removeAttribute("aria-current");
   }
+  // Refresh reads devices; it has nothing to do on the Settings route.
+  $("refresh").hidden=view==="settings";
   document.title=routeTitle(view);
   if(focus){
     (view==="settings"?$("h1-settings"):$("h1-devices")).focus({preventScroll:true});
