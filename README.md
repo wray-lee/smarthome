@@ -413,53 +413,88 @@ is reached.
 One image holds the `home` binary. The runtime image is built on
 `alpine:3.21` and carries the statically linked musl binary, so the image is
 a fraction of the Debian/glibc build's size. The SQLite file lives on a
-mounted volume, never baked into the image, and the container runs as the
-non-root `home` user (UID 10001). Build both architectures with
-`docker buildx`:
+mounted volume, never baked into the image, the container runs as the
+non-root `home` user (UID 10001), and the image ships `LICENSE` and
+`THIRD_PARTY_NOTICES.md` under `/usr/share/licenses/home/`.
+
+The 0.3.0 release image is `ghcr.io/wray-lee/smarthome:0.3.0`. Pull it once;
+Compose runs that fixed tag:
 
 ```console
-docker buildx build --platform linux/amd64,linux/arm64 -t home:latest .
+docker pull ghcr.io/wray-lee/smarthome:0.3.0
 ```
 
-That builds a multi-arch image, so the running host picks its own
-architecture. The shipped artifacts (`tmp/dist/`) are the same version
-produced as single-arch `docker save` tarballs instead; use those when no
-build is possible.
+### Run with Compose
 
-### Load the shipped image
+Write this `compose.yaml` next to where you run Compose:
 
-Version 0.3.0 ships as `home-0.3.0-amd64.tar` and `home-0.3.0-arm64.tar`
-(`docker save` output), alongside `sha256sums.txt`, `delivery.json` and the
-standalone binaries. Each tar holds one architecture only.
+```yaml
+services:
+  home:
+    image: ghcr.io/wray-lee/smarthome:0.3.0
+    container_name: home
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      HOME_PASSWORD: ${HOME_PASSWORD:?set HOME_PASSWORD}
+    volumes:
+      - home-data:/data
+    restart: unless-stopped
+
+volumes:
+  home-data:
+    name: home-data
+```
+
+`name: home-data` keeps the volume name fixed; without it Compose prefixes
+the project name, and the `docker volume create home-data` steps below would
+prepare a volume the service never mounts.
+
+`HOME_PASSWORD` is required: the `${HOME_PASSWORD:?set HOME_PASSWORD}` form
+makes Compose stop with an error when it is unset. Provide it in the
+environment of the Compose command, or in a `.env` file next to
+`compose.yaml` that you keep mode 600 and out of git:
 
 ```console
-docker load -i home-0.3.0-amd64.tar   # on an arm64 host: home-0.3.0-arm64.tar
-docker image inspect home:0.3.0       # check Architecture before starting
+printf '%s\n' "HOME_PASSWORD='a long password'" > .env
+chmod 600 .env
+docker compose up -d
 ```
 
-Loading the wrong tar leaves an image that fails to start with
-`exec format error`; pick the tar that matches `docker info` /
-`uname -m` on the host, and confirm with
-`docker image inspect home:0.3.0` (`Architecture` shows `amd64` or `arm64`).
+The environment reaches the container, so `docker inspect home` shows the
+password. The existing password file method still works when that matters:
+write `home-password` into the `/data` volume owned by UID 10001 with mode
+600 (see below), then replace the `HOME_PASSWORD` line in `compose.yaml`
+with:
 
-Create the volume and the password file, then start the panel on the
-loopback:
+```yaml
+      HOME_PASSWORD_FILE: /data/home-password
+```
+
+The service uses `container_name: home`, so the `docker exec` commands
+below address `home`. The port is published only on `127.0.0.1:8080`; the
+container itself binds `0.0.0.0`, so the host-side loopback binding is what
+keeps the panel off the LAN (same rule as the Web Panel section).
+
+### First start and the password file
+
+The Compose example above passes the password in the environment. To use
+the file instead, create the named volume and write the password before the
+first start:
 
 ```console
 docker volume create home-data
 printf '%s\n' 'a long password' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh home:0.3.0 -c 'umask 077; cat > /data/home-password'
-docker run -d --name home -p 127.0.0.1:8080:8080 \
-  -v home-data:/data \
-  -e HOME_PASSWORD_FILE=/data/home-password \
-  --restart unless-stopped home:0.3.0
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  -c 'umask 077; cat > /data/home-password'
 ```
 
 The container runs as UID 10001, so the file lands on disk owned by 10001
-with mode 600, and the password never appears in argv or in the image. Use
-`-p 127.0.0.1:8080:8080`, never `-p 8080:8080`: the container itself binds
-`0.0.0.0`, so the host-side loopback binding is the only thing keeping the
-panel off the LAN (same rule as the Web Panel section).
+with mode 600, and the password never appears in argv or in the image. A
+bind-mounted host file also works
+(`--mount type=bind,src=/path/home-password,dst=/run/secrets/home-password,readonly`
+plus `-e HOME_PASSWORD_FILE=/run/secrets/home-password`) as long as UID 10001
+can read it.
 
 Sign both Backends in once, inside the container. `docker exec -it` gives the
 Google login a terminal, so it prints the steps and accepts the pasted token
@@ -471,7 +506,8 @@ because `docker inspect` shows the environment):
 docker exec -it home home gh login --email you@example.com
 docker exec -e HOME_GH_TOKEN='oauth2_4/…' home home gh login --email you@example.com
 printf '%s\n' 'aas_et/…' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh home:0.3.0 -c 'umask 077; cat > /data/gh-token'
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  -c 'umask 077; cat > /data/gh-token'
 docker exec home home gh login --email you@example.com --token-file /data/gh-token
 docker exec -it -e HOME_TUYA_USER_CODE=… home home tuya login
 ```
@@ -506,10 +542,90 @@ curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/login   # 200
 The whole `/api/` tree needs a login, so an anonymous `GET /api/devices`
 returning 401 is normal, not a failure.
 
-`docker run` here takes no `--secret`; a bind-mounted host file also works
-(`--mount type=bind,src=/path/home-password,dst=/run/secrets/home-password,readonly`
-plus `-e HOME_PASSWORD_FILE=/run/secrets/home-password`) as long as UID 10001
-can read it. Either way the password never lands in argv or the image.
-
 The runtime image sets `HOME_DB=/data/home.sqlite`, `HOME_HOST=0.0.0.0` and
 `HOME_PORT=8080`, so no other configuration is needed.
+
+### Upgrade an existing deployment
+
+`home` below is the old container's name. Inspect it first and reuse the
+volume that already holds `home.sqlite`; do not let the new service start on
+a fresh, empty one:
+
+```console
+docker inspect home --format '{{range .Mounts}}{{.Type}} {{if .Name}}{{.Name}}{{else}}{{.Source}}{{end}} -> {{.Destination}}{{"\n"}}{{end}}'
+```
+
+The line ending in `/data` names either a Docker volume (`volume`) or a host
+path (`bind`). Back up the database while the container is stopped, then
+remove the old container so the new one can take its name and the loopback
+port:
+
+```console
+docker stop home
+mkdir -p ./data-backup
+docker cp home:/data/. ./data-backup/
+docker rm home
+```
+
+When the volume is `home-data`, the Compose file above needs no change. When
+inspect printed another volume name, put that name in `name:` instead, so
+Compose reuses it rather than creating an empty `home-data`:
+
+```yaml
+volumes:
+  home-data:
+    name: the-name-from-inspect
+```
+
+When `/data` is a bind mount, use the host path in the service:
+
+```yaml
+    volumes:
+      - /the/host/path/from/inspect:/data
+```
+
+Two processes must not write one SQLite file at the same time, and the port
+can belong to only one of them, so stop the old container before
+`docker compose up -d`. The database migrates forward when a new version
+opens it; the backup is the way back if an older binary later refuses the
+newer schema.
+
+### Offline: load the shipped image
+
+For a host without registry access, save the image for its architecture on
+a machine that can pull, copy the tarball over, load it, and point the same
+Compose file at the loaded tag, which Compose uses without pulling:
+
+```console
+docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.0
+docker tag ghcr.io/wray-lee/smarthome:0.3.0 home:0.3.0
+docker save home:0.3.0 -o home-0.3.0-arm64.tar
+# on the offline host:
+docker load -i home-0.3.0-arm64.tar
+docker image inspect home:0.3.0 --format '{{.Architecture}}'
+```
+
+```yaml
+services:
+  home:
+    image: home:0.3.0
+```
+
+The inspect output must be `amd64` or `arm64` and match the host; a tar for
+the wrong architecture fails at start with `exec format error`. If no tar
+matches the host, run `docker build -t home:0.3.0 .` instead; it produces
+the same tag for the native architecture.
+
+## License
+
+MIT; the copyright is 2026 wray-lee. The full text is in [LICENSE](LICENSE).
+
+`crates/ghome-backend` is a fork of `piekstra/google-home-cli` v0.10.0, and
+`crates/tuya-backend` ports `lueur`'s `tuya_cloud.rs`; both upstream
+projects are MIT. Their license texts are reproduced in full in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and the original tracked
+copies stay at `crates/ghome-backend/LICENSE-ghome` and
+`crates/tuya-backend/LICENSE-tuya`.
+
+The container image ships `LICENSE` and `THIRD_PARTY_NOTICES.md` under
+`/usr/share/licenses/home/`.

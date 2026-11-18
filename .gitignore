@@ -21,3 +21,5 @@ wget-log
 !.scratch/smarthome-v1/issues
 !.scratch/smarthome-v1/fixtures
 !.scratch/smarthome-v1/spec.md
+# Compose secrets file from the README example.
+.env
