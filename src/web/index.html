@@ -946,7 +946,7 @@ function ghReauthNodes(){
   note.textContent=t("banner.containerNote");
   nodes.push(note);
   var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";nodes.push(c2);
-  nodes.push(makeBtn(t("nav.refresh"),true,function(){load();}));
+  nodes.push(makeBtn(t("nav.refresh"),true,function(){load(true);}));
   return nodes;
 }
 function renderBannerNodes(nodes){
@@ -990,7 +990,7 @@ function bannerFor(data,statusData){
     nodes.push(note);
     var c2=document.createElement("code");c2.textContent="docker exec -i <container> home gh login --email <your-email>";nodes.push(c2);
     nodes.push(makeBtn(t("banner.tuyaSignIn"),false,function(){openQr();}));
-    nodes.push(makeBtn(t("nav.refresh"),true,function(){load();}));
+    nodes.push(makeBtn(t("nav.refresh"),true,function(){load(true);}));
     renderBannerNodes(nodes);
     return;
   }
@@ -1224,7 +1224,7 @@ function showError(text){
   var box=document.createElement("div");box.className="err-box";box.setAttribute("role","alert");
   box.textContent=tf("err.prefix",{detail:text});
   var btn=document.createElement("button");btn.type="button";btn.textContent=t("action.retry");
-  btn.addEventListener("click",function(){load();});
+  btn.addEventListener("click",function(){load(true);});
   box.appendChild(document.createElement("br"));
   box.appendChild(btn);
   slot.appendChild(box);
@@ -1864,7 +1864,7 @@ function showGuide(id){
   }
   if(id==="google_home"&&nodes.length){
     var c=document.createElement("code");c.textContent="home gh login --email <your-email>";nodes.push(c);
-    nodes.push(makeBtn(t("tab.guide.refresh"),true,function(){load();}));
+    nodes.push(makeBtn(t("tab.guide.refresh"),true,function(){load(true);}));
   }else if(id==="tuya"&&nodes.length){
     nodes.push(makeBtn(t("banner.tuyaSignIn"),false,function(){openQr();}));
   }else{
@@ -1892,13 +1892,13 @@ function selectTab(id,moveFocus){
   var own=tabRowsFor(id,tabRows);
   if(lastDevices)bannerFor(lastDevices,lastStatus);
   renderRows(own,true);
-  $("status-msg").textContent=tf(own.length===1?"status.updated.one":"status.updated.other",{count:NF.format(own.length)});
+  setText($("status-msg"),tf(own.length===1?"status.updated.one":"status.updated.other",{count:NF.format(own.length)}));
   showGuide(id);
   tabEl(id).scrollIntoView({block:"nearest",inline:"nearest",container:"nearest"});
 }
 function renderView(){
   var own=tabRowsFor(tabSel,tabRows);
-  $("status-msg").textContent=tf(own.length===1?"status.updated.one":"status.updated.other",{count:NF.format(own.length)});
+  setText($("status-msg"),tf(own.length===1?"status.updated.one":"status.updated.other",{count:NF.format(own.length)}));
   renderRows(own,false);
   showGuide(tabSel);
 }
@@ -1951,11 +1951,13 @@ document.addEventListener("visibilitychange",function(){
   if(elapsed>=POLL_MS)schedule(0);
   else schedule(POLL_MS-elapsed);
 });
-function load(){
+function load(showLoading){
   if(loading)return Promise.resolve();
   loading=true;
   var msg=$("status-msg");
-  msg.textContent=t("status.loading");
+  // A background poll leaves the live line alone: rewriting it would make a
+  // screen reader repeat the same count every 10 s.
+  if(showLoading)setText(msg,t("status.loading"));
   var devicesPromise=fetch("/api/devices",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
   var statusPromise=fetch("/api/status",{headers:{"Accept":"application/json"}}).then(function(r){return r.json().then(function(j){return [r,j];});});
   return Promise.all([devicesPromise,statusPromise]).then(function(pair){
@@ -2088,11 +2090,11 @@ applyI18n();
 selectTab(tabSel,false);
 fillSettings();
 enterView(currentView(),false);
-$("refresh").addEventListener("click",function(){load();});
+$("refresh").addEventListener("click",function(){load(true);});
 $("signout").addEventListener("click",function(){
   fetch("/logout",{method:"POST"}).then(function(){location.href="/login";}).catch(function(){location.href="/login";});
 });
-load();
+load(true);
 </script>
 </body>
 </html>
