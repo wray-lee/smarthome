@@ -7,7 +7,7 @@
 Google Home and Tuya devices behind one Rust binary and a Web Panel. Every
 command prints one JSON document to stdout; the exit code says what happened.
 
-[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.0](https://img.shields.io/badge/GHCR-0.3.0-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
+[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.1](https://img.shields.io/badge/GHCR-0.3.1-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
 
 English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
@@ -70,7 +70,7 @@ the panel's HTTP mapping.
 printf '%s\n' "HOME_PASSWORD='{panel_password}'" > .env
 chmod 600 .env
 docker run -d --name home --env-file .env -p 127.0.0.1:8080:8080 \
-  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.0
+  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 2. Sign both Backends in once inside the container:
@@ -96,7 +96,7 @@ variable is unset.
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"

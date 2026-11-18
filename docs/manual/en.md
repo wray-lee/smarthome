@@ -118,11 +118,11 @@ a real Device.
 <a id='quick-start'></a>
 ## Quick start
 
-The 0.3.0 release image is `ghcr.io/wray-lee/smarthome:0.3.0`. Pull it once;
+The 0.3.1 release image is `ghcr.io/wray-lee/smarthome:0.3.1`. Pull it once;
 Compose runs that fixed tag:
 
 ```console
-docker pull ghcr.io/wray-lee/smarthome:0.3.0
+docker pull ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 Write this `compose.yaml` next to where you run Compose:
@@ -130,7 +130,7 @@ Write this `compose.yaml` next to where you run Compose:
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"
@@ -576,11 +576,11 @@ never baked into the image, the container runs as the non-root `home` user
 (UID 10001), and the image ships `LICENSE` and `THIRD_PARTY_NOTICES.md` under
 `/usr/share/licenses/home/`.
 
-The 0.3.0 release image is `ghcr.io/wray-lee/smarthome:0.3.0`. Pull it once;
+The 0.3.1 release image is `ghcr.io/wray-lee/smarthome:0.3.1`. Pull it once;
 Compose runs that fixed tag:
 
 ```console
-docker pull ghcr.io/wray-lee/smarthome:0.3.0
+docker pull ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 ### Run with Compose
@@ -590,7 +590,7 @@ Write this `compose.yaml` next to where you run Compose:
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"
@@ -644,7 +644,7 @@ start:
 ```console
 docker volume create home-data
 printf '%s\n' '{panel_password}' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.1 \
   -c 'umask 077; cat > /data/home-password'
 ```
 
@@ -665,7 +665,7 @@ because `docker inspect` shows the environment):
 docker exec -it home home gh login --email you@example.com
 docker exec -e HOME_GH_TOKEN='{oauth_token}' home home gh login --email you@example.com
 printf '%s\n' '{gh_token}' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.1 \
   -c 'umask 077; cat > /data/gh-token'
 docker exec home home gh login --email you@example.com --token-file /data/gh-token
 docker exec -it -e HOME_TUYA_USER_CODE={user_code} home home tuya login
@@ -756,23 +756,23 @@ machine that can pull, copy the tarball over, load it, and point the same
 Compose file at the loaded tag, which Compose uses without pulling:
 
 ```console
-docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.0
-docker tag ghcr.io/wray-lee/smarthome:0.3.0 home:0.3.0
-docker save home:0.3.0 -o home-0.3.0-arm64.tar
+docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.1
+docker tag ghcr.io/wray-lee/smarthome:0.3.1 home:0.3.1
+docker save home:0.3.1 -o home-0.3.1-arm64.tar
 # on the offline host:
-docker load -i home-0.3.0-arm64.tar
-docker image inspect home:0.3.0 --format '{{.Architecture}}'
+docker load -i home-0.3.1-arm64.tar
+docker image inspect home:0.3.1 --format '{{.Architecture}}'
 ```
 
 ```yaml
 services:
   home:
-    image: home:0.3.0
+    image: home:0.3.1
 ```
 
 The inspect output must be `amd64` or `arm64` and match the host; a tar for
 the wrong architecture fails at start with `exec format error`. If no tar
-matches the host, run `docker build -t home:0.3.0 .` instead; it produces the
+matches the host, run `docker build -t home:0.3.1 .` instead; it produces the
 same tag for the native architecture.
 
 <a id='security'></a>

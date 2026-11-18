@@ -110,11 +110,11 @@ export 是前提条件，而不是便利选项。网络不可信时请 vendor �
 <a id='quick-start'></a>
 ## 快速开始
 
-0.3.0 发布镜像为 `ghcr.io/wray-lee/smarthome:0.3.0`。先拉取一次；Compose 会
+0.3.1 发布镜像为 `ghcr.io/wray-lee/smarthome:0.3.1`。先拉取一次；Compose 会
 使用这个固定标签：
 
 ```console
-docker pull ghcr.io/wray-lee/smarthome:0.3.0
+docker pull ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 在你运行 Compose 的位置旁编写这个 `compose.yaml`：
@@ -122,7 +122,7 @@ docker pull ghcr.io/wray-lee/smarthome:0.3.0
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"
@@ -516,11 +516,11 @@ JSON（`unauthorized`）；密码错误的 POST 返回 401。`GET /api/devices` 
 运行；镜像在 `/usr/share/licenses/home/` 下附带 `LICENSE` 和
 `THIRD_PARTY_NOTICES.md`。
 
-0.3.0 发布镜像为 `ghcr.io/wray-lee/smarthome:0.3.0`。先拉取一次；Compose 会
+0.3.1 发布镜像为 `ghcr.io/wray-lee/smarthome:0.3.1`。先拉取一次；Compose 会
 使用这个固定标签：
 
 ```console
-docker pull ghcr.io/wray-lee/smarthome:0.3.0
+docker pull ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 ### 使用 Compose 运行
@@ -530,7 +530,7 @@ docker pull ghcr.io/wray-lee/smarthome:0.3.0
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"
@@ -580,7 +580,7 @@ UID 10001，模式 600（见下），然后把 `compose.yaml` 中的 `HOME_PASSW
 ```console
 docker volume create home-data
 printf '%s\n' '{panel_password}' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.1 \
   -c 'umask 077; cat > /data/home-password'
 ```
 
@@ -598,7 +598,7 @@ printf '%s\n' '{panel_password}' | docker run --rm -i -v home-data:/data \
 docker exec -it home home gh login --email you@example.com
 docker exec -e HOME_GH_TOKEN='{oauth_token}' home home gh login --email you@example.com
 printf '%s\n' '{gh_token}' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.1 \
   -c 'umask 077; cat > /data/gh-token'
 docker exec home home gh login --email you@example.com --token-file /data/gh-token
 docker exec -it -e HOME_TUYA_USER_CODE={user_code} home home tuya login
@@ -681,23 +681,23 @@ volumes:
 而不拉取：
 
 ```console
-docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.0
-docker tag ghcr.io/wray-lee/smarthome:0.3.0 home:0.3.0
-docker save home:0.3.0 -o home-0.3.0-arm64.tar
+docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.1
+docker tag ghcr.io/wray-lee/smarthome:0.3.1 home:0.3.1
+docker save home:0.3.1 -o home-0.3.1-arm64.tar
 # on the offline host:
-docker load -i home-0.3.0-arm64.tar
-docker image inspect home:0.3.0 --format '{{.Architecture}}'
+docker load -i home-0.3.1-arm64.tar
+docker image inspect home:0.3.1 --format '{{.Architecture}}'
 ```
 
 ```yaml
 services:
   home:
-    image: home:0.3.0
+    image: home:0.3.1
 ```
 
 inspect 输出必须是 `amd64` 或 `arm64` 并与主机匹配；架构不符的 tar 会在启动
 时以 `exec format error` 失败。如果没有匹配主机的 tar，改为运行
-`docker build -t home:0.3.0 .`；它会为本机架构生成相同的标签。
+`docker build -t home:0.3.1 .`；它会为本机架构生成相同的标签。
 
 <a id='security'></a>
 ## 安全

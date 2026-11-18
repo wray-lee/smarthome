@@ -6,7 +6,7 @@
 
 Google Home 与 Tuya 设备，由一个 Rust 二进制程序和一个网页面板统一管理。每条命令都向 stdout 输出一份 JSON 文档，退出码说明执行结果。
 
-[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.0](https://img.shields.io/badge/GHCR-0.3.0-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
+[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.1](https://img.shields.io/badge/GHCR-0.3.1-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
 
 [English](README.md) | 简体中文 | [日本語](README.ja.md)
 
@@ -68,7 +68,7 @@ $ echo $?
 printf '%s\n' "HOME_PASSWORD='{panel_password}'" > .env
 chmod 600 .env
 docker run -d --name home --env-file .env -p 127.0.0.1:8080:8080 \
-  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.0
+  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 2. 在容器里把两个后端各登录一次：
@@ -92,7 +92,7 @@ docker exec -it home home tuya login
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"

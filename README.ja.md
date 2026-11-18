@@ -7,7 +7,7 @@
 Google Home と Tuya のデバイスを、1 つの Rust バイナリと Web パネルで操作
 します。各コマンドは JSON を 1 つ stdout に書き出し、終了コードが結果を表します。
 
-[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.0](https://img.shields.io/badge/GHCR-0.3.0-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
+[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.1](https://img.shields.io/badge/GHCR-0.3.1-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
 
 [English](README.md) | [简体中文](README.zh-CN.md) | 日本語
 
@@ -75,7 +75,7 @@ $ echo $?
 printf '%s\n' "HOME_PASSWORD='{panel_password}'" > .env
 chmod 600 .env
 docker run -d --name home --env-file .env -p 127.0.0.1:8080:8080 \
-  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.0
+  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 2. コンテナ内で両方のバックエンドに 1 回ずつサインインします:
@@ -101,7 +101,7 @@ Compose は停止します。
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"

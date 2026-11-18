@@ -124,11 +124,11 @@ vendor する（`cargo vendor`）か、WSL 自身のレジストリキャッシ�
 <a id='quick-start'></a>
 ## クイックスタート
 
-0.3.0 リリースのイメージは `ghcr.io/wray-lee/smarthome:0.3.0` です。一度だけ
+0.3.1 リリースのイメージは `ghcr.io/wray-lee/smarthome:0.3.1` です。一度だけ
 pull します。Compose はその固定タグを使います。
 
 ```console
-docker pull ghcr.io/wray-lee/smarthome:0.3.0
+docker pull ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 Compose を実行する場所に次の `compose.yaml` を書きます。
@@ -136,7 +136,7 @@ Compose を実行する場所に次の `compose.yaml` を書きます。
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"
@@ -586,11 +586,11 @@ Debian/glibc ビルドに比べてはるかに小さいサイズです。SQLite 
 非 root の `home` ユーザー（UID 10001）で実行され、イメージは `LICENSE` と
 `THIRD_PARTY_NOTICES.md` を `/usr/share/licenses/home/` に同梱します。
 
-0.3.0 リリースのイメージは `ghcr.io/wray-lee/smarthome:0.3.0` です。一度だけ
+0.3.1 リリースのイメージは `ghcr.io/wray-lee/smarthome:0.3.1` です。一度だけ
 pull します。Compose はその固定タグを使います。
 
 ```console
-docker pull ghcr.io/wray-lee/smarthome:0.3.0
+docker pull ghcr.io/wray-lee/smarthome:0.3.1
 ```
 
 ### Compose で実行
@@ -600,7 +600,7 @@ Compose を実行する場所に次の `compose.yaml` を書きます。
 ```yaml
 services:
   home:
-    image: ghcr.io/wray-lee/smarthome:0.3.0
+    image: ghcr.io/wray-lee/smarthome:0.3.1
     container_name: home
     ports:
       - "127.0.0.1:8080:8080"
@@ -652,7 +652,7 @@ UID 10001 所有、モード 600 で `home-password` を書き（下記参照）
 ```console
 docker volume create home-data
 printf '%s\n' '{panel_password}' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.1 \
   -c 'umask 077; cat > /data/home-password'
 ```
 
@@ -673,7 +673,7 @@ Enter を受け付けます。2 つの非対話の代替手段はトークンを
 docker exec -it home home gh login --email you@example.com
 docker exec -e HOME_GH_TOKEN='{oauth_token}' home home gh login --email you@example.com
 printf '%s\n' '{gh_token}' | docker run --rm -i -v home-data:/data \
-  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.0 \
+  --entrypoint sh ghcr.io/wray-lee/smarthome:0.3.1 \
   -c 'umask 077; cat > /data/gh-token'
 docker exec home home gh login --email you@example.com --token-file /data/gh-token
 docker exec -it -e HOME_TUYA_USER_CODE={user_code} home home tuya login
@@ -765,23 +765,23 @@ volumes:
 タグに向けます。Compose は pull せずにそれを使います。
 
 ```console
-docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.0
-docker tag ghcr.io/wray-lee/smarthome:0.3.0 home:0.3.0
-docker save home:0.3.0 -o home-0.3.0-arm64.tar
+docker pull --platform linux/arm64 ghcr.io/wray-lee/smarthome:0.3.1
+docker tag ghcr.io/wray-lee/smarthome:0.3.1 home:0.3.1
+docker save home:0.3.1 -o home-0.3.1-arm64.tar
 # on the offline host:
-docker load -i home-0.3.0-arm64.tar
-docker image inspect home:0.3.0 --format '{{.Architecture}}'
+docker load -i home-0.3.1-arm64.tar
+docker image inspect home:0.3.1 --format '{{.Architecture}}'
 ```
 
 ```yaml
 services:
   home:
-    image: home:0.3.0
+    image: home:0.3.1
 ```
 
 inspect の出力は `amd64` か `arm64` で、ホストと一致しなければなりません。
 アーキテクチャが違う tar は起動時に `exec format error` で失敗します。ホストに
-合う tar がない場合は、代わりに `docker build -t home:0.3.0 .` を実行して
+合う tar がない場合は、代わりに `docker build -t home:0.3.1 .` を実行して
 ください。ネイティブアーキテクチャ用に同じタグを生成します。
 
 <a id='security'></a>
