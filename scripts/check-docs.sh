@@ -233,7 +233,7 @@ fi
 
 # 10. Every documented CLI command answers --help with exit 0. Only --help is
 # ever appended; no other command is run.
-HOME_BIN=${HOME_BIN:-$ROOT/target/debug/home}
+HOME_BIN=${HOME_BIN:-${CARGO_TARGET_DIR:-$ROOT/target}/debug/home}
 if [ ! -x "$HOME_BIN" ]; then
   bad "10. CLI --help: $HOME_BIN is missing or not executable; build it with cargo build --bin home"
 else
