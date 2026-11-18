@@ -235,9 +235,10 @@ sqlite3 /var/lib/home/home.sqlite ".backup '/var/backups/home-$(date +%F).sqlite
 <a id='google-home-sign-in'></a>
 ## Google Home 登录
 
-凭据是 Google 主令牌（等同于账号密码）或一次性的浏览器 `oauth_token`。它按
-顺序来自 `--token-file <PATH>`、`HOME_GH_TOKEN` 或 stdin 的一行；令牌本身绝不
-进入 argv：
+账号邮箱通过 `--email` 传入，或由 `HOME_GH_EMAIL` 设置。凭据是 Google 主令牌
+（等同于账号密码）或一次性的浏览器 `oauth_token`。它按顺序来自
+`--token-file <PATH>`、`HOME_GH_TOKEN` 或 stdin 的一行；令牌本身绝不进入
+argv：
 
 ```console
 home gh login --email you@example.com           # interactive: paste, press Enter

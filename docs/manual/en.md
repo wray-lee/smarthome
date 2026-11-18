@@ -252,10 +252,10 @@ only in the database.
 <a id='google-home-sign-in'></a>
 ## Google Home sign-in
 
-The credential is the Google master token (equivalent to the account
-password) or a one-time browser `oauth_token`. It comes from `--token-file
-<PATH>`, `HOME_GH_TOKEN`, or one line on stdin, in that order; the token
-itself never goes in argv:
+The account email comes from `--email` or `HOME_GH_EMAIL`. The credential is
+the Google master token (equivalent to the account password) or a one-time
+browser `oauth_token`. It comes from `--token-file <PATH>`, `HOME_GH_TOKEN`,
+or one line on stdin, in that order; the token itself never goes in argv:
 
 ```console
 home gh login --email you@example.com           # interactive: paste, press Enter

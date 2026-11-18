@@ -258,6 +258,7 @@ sqlite3 /var/lib/home/home.sqlite ".backup '/var/backups/home-$(date +%F).sqlite
 <a id='google-home-sign-in'></a>
 ## Google Home のサインイン
 
+アカウントのメールアドレスは `--email` で渡すか、`HOME_GH_EMAIL` に設定します。
 資格情報は Google のマスタートークン（アカウントのパスワードに相当）または
 1 回限りのブラウザー `oauth_token` です。`--token-file <PATH>`、
 `HOME_GH_TOKEN`、stdin の 1 行、の順で取得します。トークン自体は argv に
