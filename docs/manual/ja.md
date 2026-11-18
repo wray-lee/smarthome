@@ -308,12 +308,12 @@ Android ID はマスタートークンに結び付いており（すべての Be
 と候補一覧で失敗します。
 
 ```console
-home gh get den/lamp
-home gh set den/lamp onOff false
-home gh set den/lamp brightness 75
-home gh set den/lamp color.colorTemperature 3000
-home gh set den/lamp thermostat 21 --mode heat
-home gh set den/lamp volume.currentVolume 30
+home gh get study/reading-lamp
+home gh set study/reading-lamp onOff false
+home gh set study/reading-lamp brightness 75
+home gh set study/reading-lamp color.colorTemperature 3000
+home gh set study/reading-lamp thermostat 21 --mode heat
+home gh set study/reading-lamp volume.currentVolume 30
 ```
 
 `<trait>` は `onOff`、`brightness`、`color.colorTemperature`、

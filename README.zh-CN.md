@@ -27,13 +27,17 @@
 显示为一个设备，名称与能力都不相同。命令行是为智能体和脚本设计的；网页面板
 把同一套命令层交给人使用，安全规则完全一致。
 
+网页面板是零构建的单个页面，提供全部、Google Home 和 Tuya 三个标签页，设置
+视图可切换界面语言（英语、简体中文或日语）、默认标签页和主题，只读设备上
+显示可见的 `protected` 标签。
+
 [手册术语表](docs/manual/zh-CN.md#terms)界定了后端、设备、受保护设备、敏感
 操作、遥测、本地密钥等术语。
 
 ## 快速开始
 
-0.3.0 发布镜像为 `ghcr.io/wray-lee/smarthome:0.3.0`。编写如下
-`compose.yaml`：
+0.3.0 发布镜像为 `ghcr.io/wray-lee/smarthome:0.3.0`，同时提供 amd64 和
+arm64 版本。编写如下 `compose.yaml`：
 
 ```yaml
 services:

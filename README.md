@@ -29,14 +29,19 @@ physical plug can appear as a Device in both, under different names and with
 different capabilities. The CLI is built for agents and scripts; the Web Panel
 is the same command layer for humans, with the same safety rules.
 
+The Web Panel is a zero-build single page with All, Google Home and Tuya tabs,
+a Settings view for the UI language (English, Simplified Chinese or Japanese),
+the default tab and the theme, and a visible `protected` label on read-only
+Devices.
+
 The [manual terms table](docs/manual/en.md#terms) pins down Backend, Device,
 Protected Device, Sensitive Action, Telemetry, Local Key and the other domain
 words.
 
 ## Quick start
 
-The 0.3.0 release image is `ghcr.io/wray-lee/smarthome:0.3.0`. Write this
-`compose.yaml`:
+The 0.3.0 release image is `ghcr.io/wray-lee/smarthome:0.3.0`, published for
+amd64 and arm64. Write this `compose.yaml`:
 
 ```yaml
 services:

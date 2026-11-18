@@ -37,14 +37,14 @@
 |---|---|---|---|
 | 后端 | 工具用来访问设备的独立通道，有 Google Home 和 Tuya 两种，彼此不依赖。 | An independent channel the tool uses to reach Devices. There are two, Google Home and Tuya, and neither depends on the other. | バックエンド：ツールがデバイスに到達するための独立した経路。Google Home と Tuya の 2 つがあり、互いに依存しない。 |
 | 设备 | 通过某个后端能够控制或读取的对象。同一个物理插座可能在两个后端中各显示为一个设备。 | Something that can be controlled or read, as seen through one Backend. One physical plug may appear as a Device in both Backends. | デバイス：あるバックエンドから見て制御または読み取りできる対象。1 つの物理プラグが両方のバックエンドにデバイスとして現れることがある。 |
-| 受保护设备 | 在所有后端中都拒绝写入的设备，只有用户执行 `home protect --remove` 才能解除。读取状态和遥测仍然可用。保护在多次写入之间持续有效；两种明确的一次性覆盖各自允许恰好一次写入且不改变列表：命令行上的 `--force`，以及在网页面板中针对该次请求重新输入面板密码。两者都供人在键盘前使用；面板覆盖与登录共享同一套失败密码退避。敏感操作针对动作，保护针对设备，受保护设备上的敏感操作仍然需要 `--confirm`。 | A Device the tool refuses to write to through any Backend until the user removes the protection with `home protect --remove`. Reading its state and Telemetry still works. Protection stays active across writes; two explicit one-time overrides let exactly one write through without changing the list: `--force` on the CLI, and re-entering the panel password in the Web Panel for that one request. Both exist for the human at the keyboard, and the same failed-password backoff covers the panel override as the login. Unlike a Sensitive Action, which is about the action, protection is about the Device, and a Protected Device still needs `--confirm` for a Sensitive Action. | 保護デバイス：ユーザーが `home protect --remove` で解除するまで、どのバックエンドからも書き込みを拒否するデバイス。状態とテレメトリーの読み取りは引き続き可能。保護は書き込みをまたいで有効なまま。明示的な 1 回限りの上書きが 2 つあり、リストを変えずに 1 回だけ書き込みを通す：CLI の `--force` と、Web パネルでそのリクエストのためにパネルパスワードを再入力する方法。どちらもキーボードの前にいる人間のためのもので、パネルの上書きにはログインと同じ失敗パスワードのバックオフが適用される。センシティブ操作は動作について、保護はデバイスについての区別であり、保護デバイスでのセンシティブ操作には引き続き `--confirm` が必要。 |
-| 敏感操作 | 开锁或撤防等削弱物理安全的动作。除非调用方明确确认，否则工具拒绝执行。 | An action that weakens physical security, such as unlocking a door or disarming an alarm. The tool refuses it unless the caller confirms explicitly. | センシティブ操作：ドアの解錠やアラームの解除など、物理的な安全性を弱める操作。呼び出し元が明示的に確認しない限り、ツールは拒否する。 |
+| 受保护设备 | 在所有后端中都拒绝写入的设备，只有用户执行 `home protect --remove` 才能解除。读取状态和遥测仍然可用。保护在多次写入之间持续有效；两种明确的一次性覆盖各自允许恰好一次写入且不改变列表：命令行上的 `--force`，以及在网页面板中针对该次请求重新输入面板密码。两者都供人在键盘前使用；面板覆盖与登录共享同一套失败密码退避。敏感操作针对动作，保护针对设备，受保护设备上的敏感操作仍然需要 `--confirm`。 | A Device the tool refuses to write to through any Backend until the user removes the protection with `home protect --remove`. Reading its state and Telemetry still works. Protection stays active across writes; two explicit one-time overrides let exactly one write through without changing the list: `--force` on the CLI, and re-entering the panel password in the Web Panel for that one request. Both exist for the human at the keyboard, and the same failed-password backoff covers the panel override as the login. Unlike a Sensitive Action, which is about the action, protection is about the Device, and a Protected Device still needs `--confirm` for a Sensitive Action. | 保護デバイス：ユーザーが `home protect --remove` で解除するまで、どのバックエンドからも書き込みを拒否するデバイス。状態とテレメトリーの読み取りは引き続き可能。保護は書き込みをまたいで有効なまま。明示的な 1 回限りの上書きが 2 つあり、リストを変えずに 1 回だけ書き込みを通す：CLI の `--force` と、Web パネルでそのリクエストのためにパネルパスワードを再入力する方法。どちらもキーボードの前にいる人間のためのもので、パネルの上書きにはログインと同じ失敗パスワードのバックオフが適用される。機微な操作は動作について、保護はデバイスについての区別であり、保護デバイスでの機微な操作には引き続き `--confirm` が必要。 |
+| 敏感操作 | 开锁或撤防等削弱物理安全的动作。除非调用方明确确认，否则工具拒绝执行。 | An action that weakens physical security, such as unlocking a door or disarming an alarm. The tool refuses it unless the caller confirms explicitly. | 機微な操作：ドアの解錠やアラームの解除など、物理的な安全性を弱める操作。呼び出し元が明示的に確認しない限り、ツールは拒否する。 |
 | 遥测 | 设备产生的测量读数，如功率、电流、电压和累计电量。只有 Tuya 后端提供。 | Measured readings from a Device, such as power, current, voltage and accumulated energy. Only the Tuya Backend provides it. | テレメトリー：電力、電流、電圧、累積エネルギーなど、デバイスからの測定値。提供するのは Tuya バックエンドのみ。 |
 | 本地密钥 | 允许对 Tuya 设备进行本地控制的设备专属密钥。工具持有后，设备在重置或重新配网之前无需 Tuya 云即可操作。 | The per-device secret that allows Local Control of a Tuya Device. Once the tool holds it, the Device can be operated without the Tuya cloud, until the Device is reset or re-paired. | ローカルキー：Tuya デバイスのローカル制御を可能にするデバイスごとの秘密。ツールが保持すれば、デバイスがリセットまたは再ペアリングされるまで Tuya クラウドなしで操作できる。 |
 | 本地控制 | 在家庭网络中直接与设备通信，不经过厂商云。暂缓实现；Tuya 后端目前使用云端控制。 | Talking to a Device directly over the home network, with no vendor cloud involved. Deferred; the Tuya Backend currently uses Cloud Control. | ローカル制御：ベンダーのクラウドを介さず、家庭内ネットワークでデバイスと直接通信すること。延期されており、Tuya バックエンドは現在クラウド制御を使う。 |
 | 云端控制 | 以用户的 Smart Life 账号登录，通过 Smart Life 云操作 Tuya 设备。可在任意网络中使用。 | Operating a Tuya Device through the Smart Life cloud, signed in as the user's Smart Life account. Works from any network. | クラウド制御：ユーザーの Smart Life アカウントでサインインし、Smart Life クラウド経由で Tuya デバイスを操作すること。どのネットワークからでも動作する。 |
 | 供应商退出 | 在厂商云消失时让设备仍可使用。对 Tuya 来说，第一步是持有全部本地密钥。最后手段是刷入第三方固件，使设备变成另一个后端的设备。 | Keeping Devices usable if a vendor's cloud disappears. For Tuya, the first step is holding every Local Key. The last resort is reflashing a Device with third-party firmware, which turns it into a Device of a different Backend. | ベンダー出口：ベンダーのクラウドがなくなってもデバイスを使い続けられるようにすること。Tuya では、まずすべてのローカルキーを保持する。最後の手段はサードパーティ製ファームウェアを書き込み、別のバックエンドのデバイスにすること。 |
-| 关联服务 | 接入 Google Home 的厂商云账号，例如用于 Tuya 设备的 Smart Life。Google Home 后端从不直接与关联服务通信。 | A vendor cloud account connected into Google Home, for example Smart Life for Tuya devices. The Google Home Backend never talks to a Linked Service directly. | リンクされたサービス：Google Home に接続されたベンダーのクラウドアカウント。Tuya デバイスに対する Smart Life など。Google Home バックエンドがリンクされたサービスと直接通信することはない。 |
+| 关联服务 | 接入 Google Home 的厂商云账号，例如用于 Tuya 设备的 Smart Life。Google Home 后端从不直接与关联服务通信。 | A vendor cloud account connected into Google Home, for example Smart Life for Tuya devices. The Google Home Backend never talks to a Linked Service directly. | リンク済みサービス：Google Home に接続されたベンダーのクラウドアカウント。Tuya デバイスに対する Smart Life など。Google Home バックエンドがリンク済みサービスと直接通信することはない。 |
 | 网页面板 | 由 Docker 部署提供的浏览器界面，供人控制设备。 | A browser UI, served from the Docker deployment, for humans to control Devices. | Web パネル：Docker デプロイから提供されるブラウザ UI。人間がデバイスを操作するためのもの。 |
 | 命令行 | 为智能体调用而设计的命令行界面，输出机器可读。 | The command-line interface, designed to be called by agents. Its output is machine-readable. | CLI：エージェントから呼び出されることを想定したコマンドラインインターフェース。出力は機械可読。 |
 | 名称歧义 | 匹配到多个设备的设备名称。工具以退出码 3 拒绝并列出候选，而不是猜测。 | A Device name that matches more than one Device. The tool refuses it with exit 3 and lists the candidates instead of guessing. | 曖昧な名前：複数のデバイスに一致するデバイス名。ツールは推測せず、終了コード 3 で拒否して候補を列挙する。 |
@@ -278,12 +278,12 @@ Android id 与主令牌绑定（每个 Bearer 都是为它生成的），因此�
 到多个设备的名称会以退出码 3 失败并列出候选，而不是猜测。
 
 ```console
-home gh get den/lamp
-home gh set den/lamp onOff false
-home gh set den/lamp brightness 75
-home gh set den/lamp color.colorTemperature 3000
-home gh set den/lamp thermostat 21 --mode heat
-home gh set den/lamp volume.currentVolume 30
+home gh get study/reading-lamp
+home gh set study/reading-lamp onOff false
+home gh set study/reading-lamp brightness 75
+home gh set study/reading-lamp color.colorTemperature 3000
+home gh set study/reading-lamp thermostat 21 --mode heat
+home gh set study/reading-lamp volume.currentVolume 30
 ```
 
 `<trait>` 接受 `onOff`、`brightness`、`color.colorTemperature`、
