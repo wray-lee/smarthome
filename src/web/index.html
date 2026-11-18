@@ -78,7 +78,14 @@ var I18N={
 "err.requestFailed":"Request failed",
 "err.badResponse":"Bad response",
 "err.prefix":"Error: {detail}",
-"err.rateLimited":"Too many failed password attempts. Wait, then try again.",
+"err.upstream":"The device service did not answer as expected. Try again in a moment.",
+"err.storage":"The server had trouble with its saved data. Try again in a moment.",
+"err.unauthorized":"This action needs the panel password.",
+"err.usage":"The panel sent a request the server could not read. Refresh the page and try again.",
+"err.device_offline":"The device is offline. Reconnect it, then try again.",
+"err.protected":"This device is protected. Remove the protection before changing it.",
+"err.rate_limited":"Too many failed password attempts. Wait, then try again.",
+"err.reauth_required":"The sign-in has expired. Sign in again to continue.",
 "err.setpoint":"Error: Enter a setpoint number.",
 "empty.devices":"No devices found. Check that both backends are logged in.",
 "state.loading":"Loading state...",
@@ -217,7 +224,14 @@ var I18N={
 "err.requestFailed":"请求失败",
 "err.badResponse":"响应格式不正确",
 "err.prefix":"错误：{detail}",
-"err.rateLimited":"密码错误次数过多，请稍后再试。",
+"err.upstream":"设备服务暂时没有响应，请稍后重试。",
+"err.storage":"服务器处理已保存的数据时出现问题，请稍后重试。",
+"err.unauthorized":"此操作需要面板密码。",
+"err.usage":"面板发送的请求无法被服务器识别，请刷新页面后重试。",
+"err.device_offline":"设备已离线，请重新连接后再试。",
+"err.protected":"此设备已受保护，移除保护后才能更改。",
+"err.rate_limited":"密码错误次数过多，请稍后再试。",
+"err.reauth_required":"登录已过期，请重新登录后继续。",
 "err.setpoint":"错误：请输入设定温度数值。",
 "empty.devices":"没有找到设备。请确认两个后端都已登录。",
 "state.loading":"正在加载状态…",
@@ -356,7 +370,14 @@ var I18N={
 "err.requestFailed":"リクエストに失敗しました",
 "err.badResponse":"応答の形式が正しくありません",
 "err.prefix":"エラー：{detail}",
-"err.rateLimited":"パスワードの失敗が多すぎます。しばらく待ってからもう一度お試しください。",
+"err.upstream":"デバイスサービスが応答しませんでした。しばらくしてからもう一度お試しください。",
+"err.storage":"サーバーで保存データの処理に問題が発生しました。しばらくしてからもう一度お試しください。",
+"err.unauthorized":"この操作にはパネルのパスワードが必要です。",
+"err.usage":"パネルからのリクエストをサーバーが受け付けられませんでした。ページを再読み込みしてからもう一度お試しください。",
+"err.device_offline":"デバイスはオフラインです。再接続してからもう一度お試しください。",
+"err.protected":"このデバイスは保護されています。保護を解除してから変更してください。",
+"err.rate_limited":"パスワードの失敗が多すぎます。しばらく待ってからもう一度お試しください。",
+"err.reauth_required":"サインインの有効期限が切れました。もう一度サインインしてください。",
 "err.setpoint":"エラー：設定温度を数値で入力してください。",
 "empty.devices":"デバイスが見つかりません。両方のバックエンドにログインしているか確認してください。",
 "state.loading":"状態を読み込んでいます…",
@@ -834,7 +855,15 @@ function unitText(u){
   u=String(u==null?"":u);
   return u.toLowerCase()==="kwh"?"kWh":u;
 }
-function errText(j){if(!j||!j.error)return t("err.requestFailed");var e=j.error;if(e.message)return e.message;return e.code||t("err.requestFailed");}
+// A known code reads in the panel's language; only an unknown code falls back
+// to the server message.
+function errText(j){
+  if(!j||!j.error)return t("err.requestFailed");
+  var e=j.error;
+  var key="err."+String(e.code||"");
+  if(I18N.en[key]===undefined)return e.message||e.code||t("err.requestFailed");
+  return tf(key,{detail:e.message||""});
+}
 function errCode(j){return (j&&j.error&&j.error.code)||"";}
 function isReauth(j,status){return status===424||errCode(j)==="reauth_required";}
 
@@ -1276,8 +1305,7 @@ function guardedWrite(dev,opts){
       var status=pair[0];var j=pair[1];
       if(j&&j.error){
         if(isReauth(j,status))renderReauthBanner(dev.backend);
-        var code=errCode(j);
-        rollback(dev,snap,code==="rate_limited"?t("err.rateLimited"):errText(j));
+        rollback(dev,snap,errText(j));
         return;
       }
       fetchState(dev);
@@ -1315,8 +1343,9 @@ function fetchState(dev){
     var r=pair[0];var j=pair[1];
     if(j&&j.error){
       if(isReauth(j,r.status)){renderReauthBanner(dev.backend);markBackend(dev.backend,"signin");}
-      // An offline row says so in words; the backend message can carry the
-      // Device ID, which normal UI never shows.
+      // An offline row says so in words. A known code is translated, so the
+      // backend message (which can carry the Device ID) does not reach the
+      // row; only an unknown code falls back to it.
       var msg=errText(j);
       var off=errCode(j)==="device_offline"||msg.toLowerCase().indexOf("offline")!==-1;
       if(off)markBackend(dev.backend,"offline");
