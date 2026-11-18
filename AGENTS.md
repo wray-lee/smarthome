@@ -16,6 +16,8 @@ happened. Domain terms live in `CONTEXT.md`; decisions in `docs/adr/`.
 - `tests/` - black-box CLI and panel tests (`cli.rs`, `gh_03.rs`, `tuya_04.rs`,
   `tuya_05.rs`, `serve_06.rs`, `serve_07.rs`).
 - `docs/adr/` - architecture decisions.
+- `docs/manual/` - the manual in English, Simplified Chinese and Japanese.
+- `docs/images/` - the panel screenshots used by the READMEs.
 - `scripts/image-smoke.sh` - container smoke check.
 
 The two Backends never depend on each other.
@@ -34,6 +36,8 @@ cargo test --workspace
 cargo build --release
 scripts/image-smoke.sh <image_tag>
 ```
+
+`scripts/check-docs.sh` checks the six README and manual files for consistency; CI runs it after the tests.
 
 ## Engineering rules
 

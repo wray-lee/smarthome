@@ -37,3 +37,8 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --locked
+
+      - name: Documentation consistency
+        run: |
+          cargo build --locked --quiet --bin home
+          bash scripts/check-docs.sh
