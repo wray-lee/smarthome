@@ -1,47 +1,97 @@
+<div align="center">
+
+<img src="docs/images/logo.svg" alt="home logo" width="72" height="72">
+
 # home
+
+Google Home and Tuya devices behind one Rust binary and a Web Panel. Every
+command prints one JSON document to stdout; the exit code says what happened.
+
+[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![GHCR 0.3.0](https://img.shields.io/badge/GHCR-0.3.0-blue.svg)](https://github.com/wray-lee/smarthome/pkgs/container/smarthome) [![Rust 2021](https://img.shields.io/badge/Rust-2021-blue.svg)](Cargo.toml)
 
 English | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
 
-[![CI](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml/badge.svg)](https://github.com/wray-lee/smarthome/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[Quick start](#quick-start) | [Features](#features) | [CLI](#cli) | [Manual](#manual) | [Safety](#safety)
 
-`home` controls Google Home and Tuya devices from one Rust binary and a web
-panel: every command writes one JSON document to stdout, and its exit code
-says what happened.
+</div>
 
-![panel](docs/images/panel-1280-light.png)
+<div align="center">
 
-[The same panel at 390 px in the dark theme](docs/images/panel-390-dark.png)
+<img src="docs/images/panel-1280-light.png" alt="The Web Panel at 1280 px in the light theme" width="681">&emsp;<img src="docs/images/panel-390-dark-hero.png" alt="The same panel at 390 px in the dark theme" width="240">
 
-## What it does
+</div>
 
-Two independent Backends behind one binary:
+<a id='features'></a>
+## Features
 
-- **Google Home** (`home gh`) operates any Device in your Google Home through
-  the unofficial foyer API, forked from `piekstra/google-home-cli` v0.10.0. It
-  exposes `list_devices`, `get_state` and `set_trait` to the rest of the
-  workspace, the seam for a future Home MCP implementation.
-- **Tuya** (`home tuya`) talks to Tuya directly: QR sign-in, device list, Local
-  Key backup, Cloud Control and Telemetry.
+- **Two independent Backends**: Google Home through the unofficial foyer API, Tuya through Smart Life QR sign-in.
+- **One JSON document per command**: `{"ok":true,"data":...}` or `{"ok":false,"error":...}`, with exit codes `0/2/3/4/5/6/7`.
+- **Built for agents**: the CLI runs the same command layer and safety rules as the Web Panel.
+- **Zero-build single page**: All, Google Home and Tuya tabs, three UI languages, and a `protected` label on read-only Devices.
+- **Local Key backup and Telemetry**: `home tuya keys` exports the per-device secrets; Telemetry reports power, current, voltage and energy.
 
-The two Backends are independent crates and never depend on each other. One
-physical plug can appear as a Device in both, under different names and with
-different capabilities. The CLI is built for agents and scripts; the Web Panel
-is the same command layer for humans, with the same safety rules.
+<a id='cli'></a>
+## Command line
 
-The Web Panel is a zero-build single page with All, Google Home and Tuya tabs,
-a Settings view for the UI language (English, Simplified Chinese or Japanese),
-the default tab and the theme, and a visible `protected` label on read-only
-Devices.
+`home gh devices` prints every Google Home Device as one JSON document:
 
-The [manual terms table](docs/manual/en.md#terms) pins down Backend, Device,
-Protected Device, Sensitive Action, Telemetry, Local Key and the other domain
-words.
+```console
+$ home gh devices
+{
+  "ok": true,
+  "data": [
+    {
+      "id": "{device_id}",
+      "name": "Desk Plug",
+      "room": "Study",
+      "kind": "action.devices.types.OUTLET",
+      "traits": ["action.devices.traits.OnOff"],
+      "backend": "google_home"
+    }
+  ]
+}
+$ echo $?
+0
+```
 
+Exit codes: `0` ok, `2` usage, `3` ambiguous name, `4` Device offline,
+`5` `reauth_required`, `6` refused (Sensitive Action or Protected Device),
+`7` upstream. The [manual exit-code table](docs/manual/en.md#exit-codes) adds
+the panel's HTTP mapping.
+
+<a id='quick-start'></a>
 ## Quick start
 
-The 0.3.0 release image is `ghcr.io/wray-lee/smarthome:0.3.0`, published for
-amd64 and arm64. Write this `compose.yaml`:
+1. Write the panel password to a mode 600 file, then start the container on
+   loopback. `HOME_PASSWORD` is required; `home serve` refuses to start
+   without one.
+
+```console
+printf '%s\n' "HOME_PASSWORD='{panel_password}'" > .env
+chmod 600 .env
+docker run -d --name home --env-file .env -p 127.0.0.1:8080:8080 \
+  -v home-data:/data ghcr.io/wray-lee/smarthome:0.3.0
+```
+
+2. Sign both Backends in once inside the container:
+
+```console
+docker exec -it home home gh login --email you@example.com
+docker exec -it home home tuya login
+```
+
+3. Open http://127.0.0.1:8080 and sign in with the same password.
+
+4. Nothing is protected by default. Add every Device that must stay read-only
+   before the first write; only `home protect --remove` takes the protection
+   away. Both commands and the Compose file are below.
+
+<details>
+<summary>Compose file instead</summary>
+
+Write `compose.yaml` next to your `.env` and run `docker compose up -d`. The
+`${HOME_PASSWORD:?set HOME_PASSWORD}` form makes Compose stop when the
+variable is unset.
 
 ```yaml
 services:
@@ -61,101 +111,57 @@ volumes:
     name: home-data
 ```
 
-`HOME_PASSWORD` is required. Put it in a `.env` file next to `compose.yaml`,
-mode 600 and out of git:
+The [manual quick start](docs/manual/en.md#quick-start) covers the password
+file, both non-interactive Google sign-in fallbacks and the health checks.
 
-```dotenv
-HOME_PASSWORD='{panel_password}'
-```
+</details>
 
-Then start the container:
-
-```console
-chmod 600 .env
-docker compose up -d
-```
-
-Sign both Backends in once inside the container:
+<details>
+<summary>Protect a Device</summary>
 
 ```console
-docker exec -it home home gh login --email you@example.com
-docker exec -it home home tuya login
+docker exec -i home home protect tuya:{device_id}
+docker exec -i home home protect gh:{device_id}
 ```
 
-Open http://127.0.0.1:8080 and sign in with the same password.
+A Protected Device is read-only through every Backend until
+`home protect --remove`. `--force` on the CLI and the panel password re-entry
+are one-write overrides for the human at the keyboard, never for agents. The
+[Protected Devices](docs/manual/en.md#protected-devices) section has the
+rules.
 
-Nothing is protected by default. Add every Device that must stay read-only
-with `docker exec -i home home protect tuya:{device_id}` (or the same command
-with `gh:{device_id}`); only `home protect --remove` takes the protection
-away.
+</details>
 
-The [manual quick start](docs/manual/en.md#quick-start) adds the password file
-flow, both non-interactive sign-in fallbacks and the health checks.
-
-## Build from source
-
-Build on Linux or in WSL. The release binary is statically linked (musl), so
-it runs on any common Linux distribution or Alpine:
-
-```console
-cargo build --release
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --all -- --check
-```
-
-The [manual build and test section](docs/manual/en.md#build-and-test) covers
-the WSL `CARGO_HOME` and `CARGO_TARGET_DIR` setup, offline builds and
-vendoring, and `scripts/image-smoke.sh`.
-
+<a id='manual'></a>
 ## Documentation
 
-The [English manual](docs/manual/en.md#contents) is the reference for the
-binary, the Backends and the panel:
+The manual ships in English, Simplified Chinese and Japanese:
+[English](docs/manual/en.md#contents) | [简体中文](docs/manual/zh-CN.md#contents) | [日本語](docs/manual/ja.md#contents).
 
-- [Terms](docs/manual/en.md#terms) and the
-  [repository layout](docs/manual/en.md#repository-layout)
-- [Build and test](docs/manual/en.md#build-and-test) and
-  [deploy](docs/manual/en.md#deploy)
-- [Google Home sign-in](docs/manual/en.md#google-home-sign-in) and
-  [Google Home Devices](docs/manual/en.md#google-home-devices)
-- [Tuya sign-in](docs/manual/en.md#tuya-sign-in) and
-  [Telemetry](docs/manual/en.md#telemetry)
-- [Database](docs/manual/en.md#database),
-  [exit codes](docs/manual/en.md#exit-codes),
-  [Protected Devices](docs/manual/en.md#protected-devices) and
-  [upstream overrides](docs/manual/en.md#upstream-overrides)
-- [Web Panel](docs/manual/en.md#web-panel), [Docker](docs/manual/en.md#docker)
-  and [security](docs/manual/en.md#security)
+- [Quick start](docs/manual/en.md#quick-start) and [Web Panel](docs/manual/en.md#web-panel)
+- [Google Home Devices](docs/manual/en.md#google-home-devices) and [Tuya sign-in](docs/manual/en.md#tuya-sign-in)
+- [Telemetry](docs/manual/en.md#telemetry) and [exit codes](docs/manual/en.md#exit-codes)
+- [Protected Devices](docs/manual/en.md#protected-devices) and [security](docs/manual/en.md#security)
 
+<a id='safety'></a>
 ## Safety
 
 - A Protected Device is read-only through every Backend until
   `home protect --remove`. Nothing is protected by default; every Device that
-  must not be written needs explicit protection. `--force` on the CLI and the
-  panel password re-entry are one-write overrides for the human at the
-  keyboard, not for agents.
+  must not be written needs explicit protection.
 - Bind the panel to loopback and reach it over Tailscale or another private
-  network. Never expose it to the internet. If a reverse proxy terminates TLS,
-  set `HOME_COOKIE_SECURE=true` so the session cookie carries `Secure`.
-- The SQLite database is the key to the whole home and the Google account, and
-  `home tuya keys` exports the Local Keys. Treat both as secrets, keep them out
-  of git and back them up deliberately.
+  network. Never expose it to the internet; set `HOME_COOKIE_SECURE=true` when
+  a TLS reverse proxy is in front.
+- The SQLite database is the key to the whole home and the Google account,
+  and `home tuya keys` exports the Local Keys. Keep both out of git and back
+  them up deliberately.
 
-The [manual security section](docs/manual/en.md#security) has the full rules;
-[Protected Devices](docs/manual/en.md#protected-devices) has the override
-details.
-
+<a id='license'></a>
 ## License
 
 MIT, copyright 2026 wray-lee; the full text is in [LICENSE](LICENSE).
-
 `crates/ghome-backend` is a fork of
-[piekstra/google-home-cli](https://github.com/piekstra/google-home-cli)
-v0.10.0, and `crates/tuya-backend` ports `lueur`'s `tuya_cloud.rs`. Both
-upstream projects are MIT. Their license texts are reproduced in full in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), the original tracked copies
-stay at `crates/ghome-backend/LICENSE-ghome` and
-`crates/tuya-backend/LICENSE-tuya`, and the container image ships `LICENSE`
-and `THIRD_PARTY_NOTICES.md` under `/usr/share/licenses/home/`. See the
-[manual license section](docs/manual/en.md#license).
+[piekstra/google-home-cli](https://github.com/piekstra/google-home-cli) v0.10.0,
+and `crates/tuya-backend` ports `lueur`'s `tuya_cloud.rs`; both upstream
+projects are MIT. Their texts are reproduced in full in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
