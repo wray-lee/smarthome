@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: wray-lee/smarthome
+
+jobs:
+  build:
+    name: Build and smoke linux/${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: amd64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Push by digest only: no public tag exists until both smokes pass.
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/wray-lee/smarthome
+            org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=MIT
+          outputs: type=image,name=ghcr.io/wray-lee/smarthome,push-by-digest=true,name-canonical=true,push=true
+          provenance: false
+          sbom: false
+
+      - name: Pull the same digest, assert platform, smoke
+        env:
+          ARCH: ${{ matrix.arch }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${IMAGE_NAME}"
+          local_tag="home-smoke:${ARCH}"
+          printf '%s\n' "$DIGEST" > "digest-linux-${ARCH}.txt"
+          docker pull "${image}@${DIGEST}"
+          docker tag "${image}@${DIGEST}" "$local_tag"
+          actual=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$local_tag")
+          if [ "$actual" != "linux/${ARCH}" ]; then
+            echo "platform mismatch: got $actual, expected linux/${ARCH}" >&2
+            exit 1
+          fi
+          bash scripts/image-smoke.sh "$local_tag" --platform "linux/${ARCH}"
+
+      - name: Upload smoked digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-linux-${{ matrix.arch }}
+          path: digest-linux-${{ matrix.arch }}.txt
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+  publish:
+    name: Publish version and latest
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download smoked digests
+        uses: actions/download-artifact@v8
+        with:
+          pattern: digest-linux-*
+          path: digests
+          merge-multiple: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Publish version and latest tags
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${IMAGE_NAME}"
+          version="${GITHUB_REF_NAME#v}"
+          mapfile -t refs < <(sed "s|^|${image}@|" digests/digest-linux-*.txt)
+          docker buildx imagetools create --tag "${image}:${version}" --tag "${image}:latest" "${refs[@]}"
+          docker buildx imagetools inspect "${image}:${version}"
